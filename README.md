@@ -5,12 +5,12 @@
 Chartistry is an extensible charting library for [Leptos](https://github.com/leptos-rs/leptos). It provides a simple and easy to use `<Chart>` component.
 
 - [Interactive demo](https://feral-dot-io.github.io/leptos-chartistry/)
-- [Usage examples](https://feral-dot-io.github.io/leptos-chartistry/examples.html) -- start here
+- [Usage examples](https://feral-dot-io.github.io/leptos-chartistry/examples.html)
 - [API documentation](https://docs.rs/leptos-chartistry)
 
 Add Chartistry to your project with `cargo add leptos-chartistry`
 
-![Chartistry in action!](docs/screenshot.png?raw=true "Chartistry in action!")
+![Chartistry in action!](/docs/screenshot.png?raw=true "Chartistry in action!")
 
 ## Feedback
 
