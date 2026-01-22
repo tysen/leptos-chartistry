@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- Fixed for any bug fixes. -->
 <!-- Security in case of vulnerabilities. -->
 
+## [0.2.3] - 2026-01-22
+### Changed
+- Updated [leptos-use dependency](https://github.com/Synphonyte/leptos-use) to 0.18.
+
 ## [0.2.2] - 2025-06-16
 ### Fixed
 - Update Leptos to 0.8.
