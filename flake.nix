@@ -78,7 +78,7 @@
         };
 
         # Pinned to match {demo,ssr}/Cargo.toml
-        wasm-bindgen-cli-local = pkgs.wasm-bindgen-cli_0_2_100;
+        wasm-bindgen-cli-local = pkgs.wasm-bindgen-cli_0_2_108;
 
         # Build demo
         src =
