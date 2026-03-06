@@ -1,8 +1,10 @@
 mod aligned_floats;
+mod aligned_integers;
 mod span;
 mod timestamps;
 
 pub use aligned_floats::AlignedFloats;
+pub use aligned_integers::AlignedIntegers;
 pub use span::{HorizontalSpan, TickFormatFn, VerticalSpan};
 pub use timestamps::{Period, Timestamps};
 
