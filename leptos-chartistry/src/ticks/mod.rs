@@ -1,8 +1,8 @@
 mod gen;
 
 pub use gen::{
-    AlignedFloats, Format as TickFormat, GeneratedTicks, Generator as TickGen, HorizontalSpan,
-    Period, TickFormatFn, Timestamps, VerticalSpan,
+    AlignedFloats, AlignedIntegers, Format as TickFormat, GeneratedTicks, Generator as TickGen,
+    HorizontalSpan, Period, TickFormatFn, Timestamps, VerticalSpan,
 };
 
 use chrono::prelude::*;
@@ -55,3 +55,26 @@ where
         self.timestamp() as f64 + (self.timestamp_subsec_nanos() as f64 / 1e9)
     }
 }
+
+/// Macro to implement Tick for integer types.
+/// Note: For very large integers (i64::MAX, u64::MAX), casting to f64 loses precision.
+/// This is a known limitation also present in DateTime's implementation.
+macro_rules! impl_tick_for_integer {
+    ($($t:ty),*) => {
+        $(
+            impl private::Sealed for $t {}
+
+            impl Tick for $t {
+                fn tick_label_generator() -> impl TickGen<Tick = Self> {
+                    AlignedIntegers::<$t>::default()
+                }
+
+                fn position(&self) -> f64 {
+                    *self as f64
+                }
+            }
+        )*
+    };
+}
+
+impl_tick_for_integer!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
