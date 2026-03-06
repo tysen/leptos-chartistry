@@ -125,14 +125,14 @@ impl Step {
     Implementation from "A simple method for monotonic interpolation in one dimension". [^Steffen]
 
     In Fortran:
-        y1(i) = (sign(1.0, s[i-1]) + sign(1.0, s[i])) * min(abs(s[i-1]), 0.5 * abs(p[i]))
+        y1(i) = (sign(1.0, s[i-1]) + sign(1.0, s[i])) * min(abs(s[i-1]), abs(s[i]), 0.5 * abs(p[i]))
     Where:
         s[i] = (y[i+1] - y[i]) / (x[i+1] - x[i])
         p[i] = (s[i-1]h[i] + s[i]h[i-1]) / (h[i-1] + h[i])
         h[i] = x[i+1] - x[i]
 
     In Rust:
-        y(i) = (s[i-1].signum() + s[i].signum()) * s[i-1].abs().min(0.5 * p[i].abs())
+        y(i) = (s[i-1].signum() + s[i].signum()) * s[i-1].abs().min(s[i].abs()).min(0.5 * p[i].abs())
 */
 fn monotone(points: &[(f64, f64)]) -> String {
     let mut path = String::with_capacity(points.len());
@@ -178,6 +178,7 @@ fn tangent(x_prev: f64, x: f64, x_next: f64, y_prev: f64, y: f64, y_next: f64) -
     let dist_prev = x - x_prev;
     let dist = x_next - x;
     let para = (slope_prev * dist + slope * dist_prev) / (dist_prev + dist);
-    // Tangent
-    (slope_prev.signum() + slope.signum()) * slope_prev.abs().min(0.5 * para.abs())
+    // Tangent: limit to min of both slopes and half the parabolic interpolant
+    (slope_prev.signum() + slope.signum())
+        * slope_prev.abs().min(slope.abs()).min(0.5 * para.abs())
 }
