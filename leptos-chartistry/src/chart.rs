@@ -249,10 +249,8 @@ fn RenderChart<X: Tick, Y: Tick>(
     // Compose edges
     let (layout, edges) = Layout::compose(&top, &right, &bottom, &left, aspect_ratio, &pre_state);
 
-    // Finalise state
-    let projection = {
-        let range_x = pre_state.data.range_x;
-        let range_y = pre_state.data.range_y;
+    // Finalise state - build projections for both axes
+    let inner_bounds = {
         let includes_bars = pre_state.data.includes_bars;
         Memo::new(move |_| {
             let mut inner = layout.inner.get();
@@ -261,11 +259,35 @@ fn RenderChart<X: Tick, Y: Tick>(
                 let half = layout.x_width.get() / 2.0;
                 inner = inner.shrink(0.0, half, 0.0, half);
             }
-
-            Projection::new(inner, range_x.get().positions(), range_y.get().positions())
+            inner
         })
     };
-    let state = State::new(pre_state, &watch, layout, projection);
+
+    let projection_primary = {
+        let range_x = pre_state.data.range_x;
+        let range_y = pre_state.data.range_y_primary;
+        Memo::new(move |_| {
+            Projection::new(
+                inner_bounds.get(),
+                range_x.get().positions(),
+                range_y.get().positions(),
+            )
+        })
+    };
+
+    let projection_secondary = {
+        let range_x = pre_state.data.range_x;
+        let range_y = pre_state.data.range_y_secondary;
+        Memo::new(move |_| {
+            Projection::new(
+                inner_bounds.get(),
+                range_x.get().positions(),
+                range_y.get().positions(),
+            )
+        })
+    };
+
+    let state = State::new(pre_state, &watch, layout, projection_primary, projection_secondary);
 
     // Render edges
     let edges = edges

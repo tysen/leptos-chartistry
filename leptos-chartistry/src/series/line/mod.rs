@@ -3,7 +3,7 @@ mod marker;
 pub use interpolation::{Interpolation, Step};
 pub use marker::{Marker, MarkerShape};
 
-use super::{ApplyUseSeries, IntoUseLine, SeriesAcc, UseData, UseY};
+use super::{ApplyUseSeries, IntoUseLine, SeriesAcc, UseData, UseY, YAxis};
 use crate::{
     colours::{Colour, DivergingGradient, LinearGradientSvg, SequentialGradient, BERLIN, LIPARI},
     series::GetYValue,
@@ -41,11 +41,24 @@ pub const DIVERGING_GRADIENT: DivergingGradient = BERLIN;
 ///     .line(Line::new(|data: &MyData| data.y2).with_name("apples"));
 /// ```
 /// See this in action with the [legend example](https://feral-dot-io.github.io/leptos-chartistry/examples.html#legend).
+///
+/// # Dual Y-axis example
+/// Lines can be assigned to either the primary (left) or secondary (right) Y-axis:
+/// ```rust
+/// # use leptos_chartistry::*;
+/// # struct MyData { x: f64, y1: f64, y2: f64 }
+/// let series = Series::new(|data: &MyData| data.x)
+///     .line(Line::new(|data: &MyData| data.y1))  // Primary (left) axis
+///     .line(Line::new(|data: &MyData| data.y2)
+///         .with_y_axis(YAxis::Secondary));       // Secondary (right) axis
+/// ```
 #[non_exhaustive]
 pub struct Line<T, Y> {
     get_y: Arc<dyn GetYValue<T, Y>>,
     /// Name of the line. Used in the legend.
     pub name: RwSignal<String>,
+    /// Which Y-axis to plot this line against. Default is [YAxis::Primary] (left).
+    pub axis: RwSignal<YAxis>,
     /// Colour of the line. If not set, the next colour in the series will be used.
     pub colour: RwSignal<Option<Colour>>,
     /// Use a linear gradient (colour scheme) for the line. Default is `None` with fallback to the line colour.
@@ -78,6 +91,7 @@ impl<T, Y> Line<T, Y> {
         Self {
             get_y: Arc::new(get_y),
             name: RwSignal::default(),
+            axis: RwSignal::default(),
             colour: RwSignal::default(),
             gradient: RwSignal::default(),
             width: RwSignal::new(1.0),
@@ -89,6 +103,14 @@ impl<T, Y> Line<T, Y> {
     /// Set the name of the line. Used in the legend.
     pub fn with_name(self, name: impl Into<String>) -> Self {
         self.name.set(name.into());
+        self
+    }
+
+    /// Set which Y-axis to plot this line against.
+    ///
+    /// Default is [YAxis::Primary] (left). Use [YAxis::Secondary] for the right axis.
+    pub fn with_y_axis(self, axis: YAxis) -> Self {
+        self.axis.set(axis);
         self
     }
 
@@ -130,6 +152,7 @@ impl<T, Y> Clone for Line<T, Y> {
         Self {
             get_y: self.get_y.clone(),
             name: self.name,
+            axis: self.axis,
             colour: self.colour,
             gradient: self.gradient,
             width: self.width,
@@ -158,17 +181,25 @@ impl<T, Y: Tick, U: Fn(&T) -> Y + Send + Sync> GetYValue<T, Y> for U {
 impl<T, Y> ApplyUseSeries<T, Y> for Line<T, Y> {
     fn apply_use_series(self: Arc<Self>, series: &mut SeriesAcc<T, Y>) {
         let colour = series.next_colour();
-        _ = series.push_line(colour, (*self).clone());
+        // Read axis value during setup - changing axis dynamically requires rebuilding the series
+        let axis = self.axis.get_untracked();
+        _ = series.push_line(colour, axis, (*self).clone());
     }
 }
 
 impl<T, Y> IntoUseLine<T, Y> for Line<T, Y> {
-    fn into_use_line(self, id: usize, colour: Memo<Colour>) -> (UseY, Arc<dyn GetYValue<T, Y>>) {
+    fn into_use_line(
+        self,
+        id: usize,
+        colour: Memo<Colour>,
+        axis: YAxis,
+    ) -> (UseY, Arc<dyn GetYValue<T, Y>>) {
         let override_colour = self.colour;
         let colour = Signal::derive(move || override_colour.get().unwrap_or(colour.get()));
         let line = UseY::new_line(
             id,
             self.name,
+            axis,
             UseLine {
                 colour,
                 gradient: self.gradient,
@@ -210,7 +241,15 @@ pub fn RenderLine<X: Tick, Y: Tick>(
             .get()
             .unwrap_or_else(|| LINEAR_GRADIENT.into())
     });
-    let range_y = Signal::derive(move || data.range_y.read().positions());
+    // Select the appropriate Y range based on which axis this line uses
+    let axis = use_y.axis;
+    let range_y = Signal::derive(move || {
+        let range = match axis {
+            YAxis::Primary => data.range_y_primary,
+            YAxis::Secondary => data.range_y_secondary,
+        };
+        range.read().positions()
+    });
 
     let width = line.width;
     view! {

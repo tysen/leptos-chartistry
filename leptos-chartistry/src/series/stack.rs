@@ -1,4 +1,4 @@
-use super::{ApplyUseSeries, GetYValue, IntoUseLine, SeriesAcc, UseY};
+use super::{ApplyUseSeries, GetYValue, IntoUseLine, SeriesAcc, UseY, YAxis};
 use crate::{
     colours::{Colour, ColourScheme, BATLOW},
     Line,
@@ -87,8 +87,8 @@ impl<T: 'static> ApplyUseSeries<T, f64> for Stack<T, f64> {
                 line,
                 previous: previous.clone(),
             };
-            // Add line
-            let get_y = series.push_line(colour, line);
+            // Add line - stacks always use the primary axis
+            let get_y = series.push_line(colour, YAxis::Primary, line);
             // Sum next line with this one
             previous.push(get_y);
         }
@@ -108,8 +108,13 @@ struct UseStackLine<T, Y> {
 }
 
 impl<T: 'static> IntoUseLine<T, f64> for StackedLine<T, f64> {
-    fn into_use_line(self, id: usize, colour: Memo<Colour>) -> (UseY, Arc<dyn GetYValue<T, f64>>) {
-        let (line, get_y) = self.line.into_use_line(id, colour);
+    fn into_use_line(
+        self,
+        id: usize,
+        colour: Memo<Colour>,
+        axis: YAxis,
+    ) -> (UseY, Arc<dyn GetYValue<T, f64>>) {
+        let (line, get_y) = self.line.into_use_line(id, colour, axis);
         let get_y = Arc::new(UseStackLine {
             line: get_y,
             previous: self.previous.clone(),

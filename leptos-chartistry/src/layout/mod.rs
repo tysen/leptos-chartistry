@@ -8,6 +8,7 @@ pub use compose::Layout;
 use crate::{
     bounds::Bounds,
     edge::Edge,
+    series::YAxis,
     state::{PreState, State},
     Tick,
 };
@@ -79,11 +80,12 @@ impl<Y: Tick> EdgeLayout<Y> {
         &self,
         state: &PreState<X, Y>,
         avail_height: Memo<f64>,
+        axis: YAxis,
     ) -> UseVerticalLayout {
         match self {
             Self::Legend(inner) => inner.to_vertical_use(state),
             Self::RotatedLabel(inner) => inner.to_vertical_use(state),
-            Self::TickLabels(inner) => inner.to_vertical_use(state, avail_height),
+            Self::TickLabels(inner) => inner.to_vertical_use(state, avail_height, axis),
         }
     }
 }

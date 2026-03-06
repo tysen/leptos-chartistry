@@ -1,6 +1,6 @@
 use crate::{
-    colours::Colour, debug::DebugRect, projection::Projection, state::State, ticks::GeneratedTicks,
-    Tick, TickLabels,
+    colours::Colour, debug::DebugRect, projection::Projection, series::YAxis, state::State,
+    ticks::GeneratedTicks, Tick, TickLabels,
 };
 use leptos::prelude::*;
 
@@ -91,10 +91,11 @@ impl<Y: Tick> YGridLine<Y> {
     pub(crate) fn use_vertical<X: Tick>(self, state: &State<X, Y>) -> UseYGridLine<Y> {
         let inner = state.layout.inner;
         let avail_height = Signal::derive(move || inner.with(|inner| inner.height()));
+        // Grid lines are aligned with the primary (left) Y-axis
         UseYGridLine {
             width: self.width,
             colour: self.colour,
-            ticks: self.ticks.generate_y(&state.pre, avail_height),
+            ticks: self.ticks.generate_y(&state.pre, avail_height, YAxis::Primary),
         }
     }
 }

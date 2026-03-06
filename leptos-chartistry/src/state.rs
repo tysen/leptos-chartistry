@@ -19,7 +19,12 @@ pub struct PreState<X: Tick, Y: Tick> {
 pub struct State<X: Tick, Y: Tick> {
     pub pre: PreState<X, Y>,
     pub layout: Layout,
+    /// Projection for the primary (left) Y-axis.
     pub projection: Memo<Projection>,
+    /// Projection for the primary (left) Y-axis (alias for projection).
+    pub projection_primary: Memo<Projection>,
+    /// Projection for the secondary (right) Y-axis.
+    pub projection_secondary: Memo<Projection>,
 
     pub svg_zero: Memo<(f64, f64)>,
 
@@ -56,24 +61,27 @@ impl<X: Tick, Y: Tick> State<X, Y> {
         pre: PreState<X, Y>,
         node: &UseWatchedNode,
         layout: Layout,
-        proj: Memo<Projection>,
+        proj_primary: Memo<Projection>,
+        proj_secondary: Memo<Projection>,
     ) -> Self {
         // Mouse
         let mouse_chart = node.mouse_chart;
         let hover_inner = node.mouse_hover_inner(layout.inner);
 
-        // Data
+        // Data - use primary projection for hover position
         let hover_position = Memo::new(move |_| {
             let (mouse_x, mouse_y) = mouse_chart.get();
-            proj.get().svg_to_position(mouse_x, mouse_y)
+            proj_primary.get().svg_to_position(mouse_x, mouse_y)
         });
         let hover_position_x = Memo::new(move |_| hover_position.get().0);
 
         Self {
             pre,
             layout,
-            projection: proj,
-            svg_zero: Memo::new(move |_| proj.get().position_to_svg(0.0, 0.0)),
+            projection: proj_primary,
+            projection_primary: proj_primary,
+            projection_secondary: proj_secondary,
+            svg_zero: Memo::new(move |_| proj_primary.get().position_to_svg(0.0, 0.0)),
 
             mouse_page: node.mouse_page,
             mouse_chart,

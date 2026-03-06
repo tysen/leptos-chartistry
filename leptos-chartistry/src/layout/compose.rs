@@ -3,6 +3,7 @@ use crate::{
     aspect_ratio::KnownAspectRatio,
     bounds::Bounds,
     edge::Edge,
+    series::YAxis,
     state::{PreState, State},
     Tick,
 };
@@ -65,10 +66,10 @@ impl Layout {
         let inner_height =
             KnownAspectRatio::inner_height_signal(aspect_ratio, top_height, bottom_height);
 
-        // Vertical options
-        let (left_widths, left) = use_vertical(left, state, inner_height);
+        // Vertical options - left uses primary axis, right uses secondary axis
+        let (left_widths, left) = use_vertical(left, state, inner_height, YAxis::Primary);
         let left_width = sum_sizes(left_widths.clone());
-        let (right_widths, right) = use_vertical(right, state, inner_height);
+        let (right_widths, right) = use_vertical(right, state, inner_height, YAxis::Secondary);
         let right_width = sum_sizes(right_widths.clone());
         let avail_width =
             KnownAspectRatio::inner_width_signal(aspect_ratio, left_width, right_width);
@@ -175,11 +176,12 @@ fn use_vertical<X: Tick, Y: Tick>(
     items: &[EdgeLayout<Y>],
     state: &PreState<X, Y>,
     avail_height: Memo<f64>,
+    axis: YAxis,
 ) -> (Vec<Signal<f64>>, Vec<UseLayout>) {
     items
         .iter()
         .map(|c| {
-            let vert = c.to_vertical_use(state, avail_height);
+            let vert = c.to_vertical_use(state, avail_height, axis);
             (vert.width, vert.layout)
         })
         .unzip()

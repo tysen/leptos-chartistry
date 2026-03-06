@@ -1,6 +1,7 @@
 use super::{
     bar::{RenderBar, UseBar},
     line::{RenderLine, UseLine},
+    YAxis,
 };
 use crate::{bounds::Bounds, debug::DebugRect, state::State, Tick};
 use leptos::{either::Either, prelude::*};
@@ -10,6 +11,8 @@ use leptos::{either::Either, prelude::*};
 pub struct UseY {
     pub id: usize,
     pub name: RwSignal<String>,
+    /// Which Y-axis this series is plotted against.
+    pub axis: YAxis,
     desc: UseYDesc,
 }
 
@@ -20,14 +23,20 @@ enum UseYDesc {
 }
 
 impl UseY {
-    pub(super) fn new_line(id: usize, name: RwSignal<String>, line: UseLine) -> Self {
+    pub(super) fn new_line(id: usize, name: RwSignal<String>, axis: YAxis, line: UseLine) -> Self {
         let desc = UseYDesc::Line(line);
-        Self { id, name, desc }
+        Self { id, name, axis, desc }
     }
 
     pub(super) fn new_bar(id: usize, name: RwSignal<String>, bar: UseBar) -> Self {
         let desc = UseYDesc::Bar(bar);
-        Self { id, name, desc }
+        // Bars always use the primary axis
+        Self {
+            id,
+            name,
+            axis: YAxis::Primary,
+            desc,
+        }
     }
 
     pub(crate) fn bar(&self) -> Option<&UseBar> {

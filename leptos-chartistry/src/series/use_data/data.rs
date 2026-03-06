@@ -3,7 +3,7 @@ use crate::{
     series::{GetX, GetY},
     Tick,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
@@ -17,11 +17,17 @@ pub struct Data<X, Y> {
     coords: HashMap<usize, Vec<(f64, f64)>>,
 
     range_x: Range<X>,
-    range_y: Range<Y>,
+    range_y_primary: Range<Y>,
+    range_y_secondary: Range<Y>,
 }
 
 impl<X: Tick, Y: Tick> Data<X, Y> {
-    pub fn new<T>(get_x: GetX<T, X>, get_ys: HashMap<usize, GetY<T, Y>>, data: &[T]) -> Self {
+    pub fn new<T>(
+        get_x: GetX<T, X>,
+        get_ys: HashMap<usize, GetY<T, Y>>,
+        secondary_ids: HashSet<usize>,
+        data: &[T],
+    ) -> Self {
         let cap = data.len();
         let y_cap = get_ys.len();
 
@@ -32,7 +38,8 @@ impl<X: Tick, Y: Tick> Data<X, Y> {
             x_to_data: Vec::with_capacity(cap * y_cap),
             coords: HashMap::with_capacity(cap),
             range_x: Range::default(),
-            range_y: Range::default(),
+            range_y_primary: Range::default(),
+            range_y_secondary: Range::default(),
         };
 
         for datum in data {
@@ -48,7 +55,13 @@ impl<X: Tick, Y: Tick> Data<X, Y> {
                 let y = get_y.value(datum);
                 // Note: cumulative can differ from Y when stacked
                 let y_stacked = get_y.stacked_value(datum);
-                built.range_y.update(&y_stacked);
+
+                // Update the appropriate range based on which axis this series uses
+                if secondary_ids.contains(&id) {
+                    built.range_y_secondary.update(&y_stacked);
+                } else {
+                    built.range_y_primary.update(&y_stacked);
+                }
 
                 // Insert
                 y_data.insert(id, y);
@@ -75,8 +88,21 @@ impl<X: Tick, Y: Tick> Data<X, Y> {
         self.range_x.clone()
     }
 
+    /// Returns the Y range for the primary (left) axis.
+    /// This is an alias for `range_y_primary` for backward compatibility.
+    #[allow(dead_code)]
     pub fn range_y(&self) -> Range<Y> {
-        self.range_y.clone()
+        self.range_y_primary.clone()
+    }
+
+    /// Returns the Y range for the primary (left) axis.
+    pub fn range_y_primary(&self) -> Range<Y> {
+        self.range_y_primary.clone()
+    }
+
+    /// Returns the Y range for the secondary (right) axis.
+    pub fn range_y_secondary(&self) -> Range<Y> {
+        self.range_y_secondary.clone()
     }
 
     /// Finds the index of the _nearest_ position to the given X. Returns None if no data.
@@ -155,7 +181,19 @@ mod tests {
         get_ys.insert(66, Arc::new(|d: &MyData| d.y1));
         get_ys.insert(5, Arc::new(|d: &MyData| d.y2));
 
-        Data::new(Arc::new(|d: &MyData| d.x), get_ys, data)
+        // Both series on primary axis
+        Data::new(Arc::new(|d: &MyData| d.x), get_ys, HashSet::new(), data)
+    }
+
+    fn make_dual_axis_data(data: &[MyData]) -> Data<f64, f64> {
+        let mut get_ys = HashMap::<usize, GetY<_, _>>::new();
+        get_ys.insert(66, Arc::new(|d: &MyData| d.y1));
+        get_ys.insert(5, Arc::new(|d: &MyData| d.y2));
+
+        // Series 5 on secondary axis
+        let mut secondary_ids = HashSet::new();
+        secondary_ids.insert(5);
+        Data::new(Arc::new(|d: &MyData| d.x), get_ys, secondary_ids, data)
     }
 
     #[test]
@@ -180,11 +218,22 @@ mod tests {
                 (5, vec![(1.0, 3.0), (4.0, 6.0), (7.0, 9.0)]),
             ])
         );
-        // Ranges
+        // Ranges - all on primary axis
         assert_eq!(data.range_x.range(), Some((&1.0, &7.0)));
         assert_eq!(data.range_x.positions(), Some((1.0, 7.0)));
-        assert_eq!(data.range_y.range(), Some((&2.0, &9.0)));
-        assert_eq!(data.range_y.positions(), Some((2.0, 9.0)));
+        assert_eq!(data.range_y_primary.range(), Some((&2.0, &9.0)));
+        assert_eq!(data.range_y_primary.positions(), Some((2.0, 9.0)));
+        assert_eq!(data.range_y_secondary.range(), None);
+    }
+
+    #[test]
+    fn test_data_dual_axis() {
+        let data = make_dual_axis_data(DATA);
+        // Y1 (id=66) on primary, Y2 (id=5) on secondary
+        assert_eq!(data.range_y_primary.range(), Some((&2.0, &8.0)));
+        assert_eq!(data.range_y_primary.positions(), Some((2.0, 8.0)));
+        assert_eq!(data.range_y_secondary.range(), Some((&3.0, &9.0)));
+        assert_eq!(data.range_y_secondary.positions(), Some((3.0, 9.0)));
     }
 
     #[test]
@@ -224,5 +273,12 @@ mod tests {
         assert_eq!(data.nearest_position_x(8.0), Some(7.0));
         assert_eq!(data.nearest_position_x(3.0), Some(4.0));
         assert_eq!(data.nearest_position_x(4.0), Some(4.0));
+    }
+
+    #[test]
+    fn test_range_y_alias() {
+        // range_y should be an alias for range_y_primary
+        let data = test_data(DATA);
+        assert_eq!(data.range_y(), data.range_y_primary());
     }
 }

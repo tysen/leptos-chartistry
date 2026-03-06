@@ -3,6 +3,7 @@ use crate::{
     bounds::Bounds,
     debug::DebugRect,
     edge::Edge,
+    series::YAxis,
     state::{PreState, State},
     ticks::{
         AlignedFloats, GeneratedTicks, HorizontalSpan, TickFormat, TickFormatFn, TickGen,
@@ -174,10 +175,14 @@ impl<Y: Tick> TickLabels<Y> {
         &self,
         state: &PreState<X, Y>,
         avail_height: Signal<f64>,
+        axis: YAxis,
     ) -> Memo<GeneratedTicks<Y>> {
         let font_height = state.font_height;
         let padding = state.padding;
-        let range_y = state.data.range_y;
+        let range_y = match axis {
+            YAxis::Primary => state.data.range_y_primary,
+            YAxis::Secondary => state.data.range_y_secondary,
+        };
         let generator = self.generator;
         Memo::new(move |_| {
             range_y
@@ -198,8 +203,9 @@ impl<Y: Tick> TickLabels<Y> {
         &self,
         state: &PreState<X, Y>,
         avail_height: Memo<f64>,
+        axis: YAxis,
     ) -> UseVerticalLayout {
-        let ticks = self.map_ticks(self.generate_y(state, avail_height.into()));
+        let ticks = self.map_ticks(self.generate_y(state, avail_height.into(), axis));
         UseVerticalLayout {
             width: mk_width(self.min_chars, state, ticks),
             layout: UseLayout::TickLabels(UseTickLabels { ticks }),
@@ -289,7 +295,13 @@ fn TickLabel<X: Tick, Y: Tick>(
     let font_height = state.pre.font_height;
     let font_width = state.pre.font_width;
     let padding = state.pre.padding;
-    let projection = state.projection;
+    // Use the appropriate projection based on edge
+    // Left edge uses primary, right edge uses secondary
+    let projection = match edge {
+        Edge::Left => state.projection_primary,
+        Edge::Right => state.projection_secondary,
+        _ => state.projection_primary, // Top/Bottom use primary for X-axis
+    };
 
     let (position, label) = tick;
     let label_len = label.len();

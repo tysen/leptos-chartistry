@@ -1,6 +1,6 @@
 use crate::{
     debug::DebugRect,
-    series::{Snippet, UseY},
+    series::{Snippet, UseY, YAxis},
     state::State,
     Tick, TickLabels, AXIS_MARKER_COLOUR,
 };
@@ -27,8 +27,11 @@ pub struct Tooltip<X: Tick, Y: Tick> {
     pub show_x_ticks: RwSignal<bool>,
     /// X axis formatter.
     pub x_ticks: TickLabels<X>,
-    /// Y axis formatter.
+    /// Y axis formatter for the primary (left) axis.
     pub y_ticks: TickLabels<Y>,
+    /// Y axis formatter for the secondary (right) axis.
+    /// If None, falls back to using y_ticks for all series.
+    pub y_ticks_secondary: Option<TickLabels<Y>>,
 }
 
 /// Where the tooltip is place when shown.
@@ -66,6 +69,7 @@ impl<X: Tick, Y: Tick> Tooltip<X, Y> {
             placement: RwSignal::new(placement.into()),
             x_ticks: x_ticks.into(),
             y_ticks: y_ticks.into(),
+            y_ticks_secondary: None,
             ..Default::default()
         }
     }
@@ -107,6 +111,12 @@ impl<X: Tick, Y: Tick> Tooltip<X, Y> {
         self.show_x_ticks.set(show_x_ticks.into());
         self
     }
+
+    /// Sets the Y tick formatter for the secondary (right) axis.
+    pub fn with_y_ticks_secondary(mut self, y_ticks: impl Into<TickLabels<Y>>) -> Self {
+        self.y_ticks_secondary = Some(y_ticks.into());
+        self
+    }
 }
 
 impl<X: Tick, Y: Tick> Default for Tooltip<X, Y> {
@@ -119,6 +129,7 @@ impl<X: Tick, Y: Tick> Default for Tooltip<X, Y> {
             show_x_ticks: RwSignal::new(true),
             x_ticks: TickLabels::default(),
             y_ticks: TickLabels::default(),
+            y_ticks_secondary: None,
         }
     }
 }
@@ -211,6 +222,7 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
         show_x_ticks,
         x_ticks,
         y_ticks,
+        y_ticks_secondary,
     } = tooltip;
     let debug = state.pre.debug;
     let font_height = state.pre.font_height;
@@ -236,17 +248,31 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
         }
     };
 
-    let format_y_value = {
-        let avail_height = Signal::derive(move || inner.read().height());
-        let y_format = y_ticks.format;
-        let y_ticks = y_ticks.generate_y(&state.pre, avail_height);
-        move |y_value: Option<Y>| {
-            let y_format = y_format.get();
-            y_value.as_ref().map_or_else(
-                || "-".to_string(),
-                |y_value| (y_format)(y_value, y_ticks.read().state.as_ref()),
-            )
-        }
+    // Primary axis Y formatter
+    let avail_height = Signal::derive(move || inner.read().height());
+    let y_format_primary = y_ticks.format;
+    let y_ticks_primary = y_ticks.generate_y(&state.pre, avail_height, YAxis::Primary);
+
+    // Secondary axis Y formatter (falls back to primary if not set)
+    let (y_format_secondary, y_ticks_secondary_gen) = if let Some(y_ticks_sec) = y_ticks_secondary {
+        let format = y_ticks_sec.format;
+        let ticks = y_ticks_sec.generate_y(&state.pre, avail_height, YAxis::Secondary);
+        (format, ticks)
+    } else {
+        // Fall back to primary formatter for secondary axis too
+        (y_format_primary, y_ticks_primary)
+    };
+
+    let format_y_value = move |axis: YAxis, y_value: Option<Y>| {
+        let (y_format, y_ticks) = match axis {
+            YAxis::Primary => (y_format_primary, y_ticks_primary),
+            YAxis::Secondary => (y_format_secondary, y_ticks_secondary_gen),
+        };
+        let y_format = y_format.get();
+        y_value.as_ref().map_or_else(
+            || "-".to_string(),
+            |y_value| (y_format)(y_value, y_ticks.read().state.as_ref()),
+        )
     };
 
     let nearest_y_values = {
@@ -271,7 +297,7 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
             .get()
             .into_iter()
             .map(|(line, y_value)| {
-                let y_value = format_y_value(y_value);
+                let y_value = format_y_value(line.axis, y_value);
                 (line, y_value)
             })
             .collect::<Vec<_>>()

@@ -12,6 +12,31 @@ pub use stack::{Stack, STACK_COLOUR_SCHEME};
 pub use use_data::{RenderData, UseData};
 pub use use_y::{Snippet, UseY};
 
+/// Specifies which Y-axis a line should be plotted against.
+///
+/// Charts can have two independent Y-axes with different ranges:
+/// - `Primary` (default): Left Y-axis
+/// - `Secondary`: Right Y-axis
+///
+/// # Example
+/// ```rust
+/// # use leptos_chartistry::*;
+/// # struct MyData { x: f64, y1: f64, y2: f64 }
+/// let series = Series::new(|data: &MyData| data.x)
+///     .line(Line::new(|data: &MyData| data.y1))  // Primary (left) axis
+///     .line(Line::new(|data: &MyData| data.y2)
+///         .with_y_axis(YAxis::Secondary));       // Secondary (right) axis
+/// ```
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum YAxis {
+    /// Primary Y-axis (left side). This is the default.
+    #[default]
+    Primary,
+    /// Secondary Y-axis (right side).
+    Secondary,
+}
+
 use crate::{
     colours::{Colour, ColourScheme},
     Tick,
@@ -118,10 +143,14 @@ pub struct Series<T: Send + Sync + 'static, X: Tick, Y: Tick> {
     pub min_x: RwSignal<Option<X>>,
     /// Optional maximum X value. Extends the upper bound of the X axis if set.
     pub max_x: RwSignal<Option<X>>,
-    /// Optional minimum Y value. Extends the lower bound of the Y axis if set.
+    /// Optional minimum Y value for the primary (left) axis. Extends the lower bound if set.
     pub min_y: RwSignal<Option<Y>>,
-    /// Optional maximum Y value. Extends the upper bound of the Y axis if set.
+    /// Optional maximum Y value for the primary (left) axis. Extends the upper bound if set.
     pub max_y: RwSignal<Option<Y>>,
+    /// Optional minimum Y value for the secondary (right) axis. Extends the lower bound if set.
+    pub min_y_secondary: RwSignal<Option<Y>>,
+    /// Optional maximum Y value for the secondary (right) axis. Extends the upper bound if set.
+    pub max_y_secondary: RwSignal<Option<Y>>,
     /// Colour scheme for the series. If there are more lines than colours, the colours will repeat.
     pub colours: RwSignal<ColourScheme>,
 }
@@ -131,7 +160,7 @@ trait ApplyUseSeries<T, Y> {
 }
 
 trait IntoUseLine<T, Y> {
-    fn into_use_line(self, id: usize, colour: Memo<Colour>) -> (UseY, GetY<T, Y>);
+    fn into_use_line(self, id: usize, colour: Memo<Colour>, axis: YAxis) -> (UseY, GetY<T, Y>);
 }
 
 trait IntoUseBar<T, Y> {
@@ -159,6 +188,8 @@ impl<T: Send + Sync, X: Tick, Y: Tick> Series<T, X, Y> {
             max_x: RwSignal::default(),
             min_y: RwSignal::default(),
             max_y: RwSignal::default(),
+            min_y_secondary: RwSignal::default(),
+            max_y_secondary: RwSignal::default(),
             colours: RwSignal::new(SERIES_COLOUR_SCHEME.into()),
             series: Vec::new(),
         }
@@ -199,9 +230,30 @@ impl<T: Send + Sync, X: Tick, Y: Tick> Series<T, X, Y> {
         self.with_min_x(min_x).with_max_x(max_x)
     }
 
-    /// Set the Y range. Extends the lower and upper bounds of the Y axis if set.
+    /// Set the Y range for the primary (left) axis. Extends the lower and upper bounds if set.
     pub fn with_y_range(self, min_y: impl Into<Option<Y>>, max_y: impl Into<Option<Y>>) -> Self {
         self.with_min_y(min_y).with_max_y(max_y)
+    }
+
+    /// Set the minimum Y value for the secondary (right) axis. Extends the lower bound if set.
+    pub fn with_min_y_secondary(self, min_y: impl Into<Option<Y>>) -> Self {
+        self.min_y_secondary.set(min_y.into());
+        self
+    }
+
+    /// Set the maximum Y value for the secondary (right) axis. Extends the upper bound if set.
+    pub fn with_max_y_secondary(self, max_y: impl Into<Option<Y>>) -> Self {
+        self.max_y_secondary.set(max_y.into());
+        self
+    }
+
+    /// Set the Y range for the secondary (right) axis. Extends the lower and upper bounds if set.
+    pub fn with_y_range_secondary(
+        self,
+        min_y: impl Into<Option<Y>>,
+        max_y: impl Into<Option<Y>>,
+    ) -> Self {
+        self.with_min_y_secondary(min_y).with_max_y_secondary(max_y)
     }
 
     /// Adds a line to the series. See [Line] for more details.
@@ -277,11 +329,16 @@ impl<T, Y> SeriesAcc<T, Y> {
         Memo::new(move |_| colours.get().by_index(id))
     }
 
-    fn push_line(&mut self, colour: Memo<Colour>, line: impl IntoUseLine<T, Y>) -> GetY<T, Y> {
+    fn push_line(
+        &mut self,
+        colour: Memo<Colour>,
+        axis: YAxis,
+        line: impl IntoUseLine<T, Y>,
+    ) -> GetY<T, Y> {
         // Create line
         let id = self.next_id;
         self.next_id += 1;
-        let (line, get_y) = line.into_use_line(id, colour);
+        let (line, get_y) = line.into_use_line(id, colour, axis);
         // Insert line
         self.lines.push((line, get_y.clone()));
         get_y
