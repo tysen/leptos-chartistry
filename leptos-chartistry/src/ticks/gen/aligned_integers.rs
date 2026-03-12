@@ -13,7 +13,6 @@ pub struct AlignedIntegers<T> {
     _marker: PhantomData<T>,
 }
 
-
 /// Format state for integer ticks - simply converts to string.
 #[derive(Clone, Debug, PartialEq)]
 struct IntegerFormat<T> {
@@ -66,11 +65,7 @@ fn find_nice_step(range: u128, max_ticks: usize) -> u128 {
 }
 
 /// Calculate approximate max ticks that fit in the span.
-fn max_ticks_from_span<T: std::fmt::Display>(
-    first: &T,
-    last: &T,
-    span: &dyn Span<T>,
-) -> usize {
+fn max_ticks_from_span<T: std::fmt::Display>(first: &T, last: &T, span: &dyn Span<T>) -> usize {
     let state = IntegerFormat::<T>::new();
     // Estimate consumed width from first and last values
     let first_consumed = span.consumed(&state, std::slice::from_ref(first));
@@ -304,8 +299,16 @@ mod tests {
         if ticks.len() > 1 {
             let step = ticks[1] - ticks[0];
             assert!(
-                step == 1 || step == 2 || step == 5 || step == 10 || step == 20 || step == 25 || step == 50 || step == 100,
-                "step was {}", step
+                step == 1
+                    || step == 2
+                    || step == 5
+                    || step == 10
+                    || step == 20
+                    || step == 25
+                    || step == 50
+                    || step == 100,
+                "step was {}",
+                step
             );
         }
     }
@@ -337,7 +340,11 @@ mod tests {
         let ticks = generate_i64(-1000, -500, 50.0);
         if ticks.len() > 1 {
             let step = ticks[1] - ticks[0];
-            assert!(step == 50 || step == 100 || step == 200, "step was {}", step);
+            assert!(
+                step == 50 || step == 100 || step == 200,
+                "step was {}",
+                step
+            );
         }
     }
 
@@ -388,17 +395,53 @@ mod tests {
         let span_u128 = mk_span::<u128>(50.0);
         let span_usize = mk_span::<usize>(50.0);
 
-        assert!(!AlignedIntegers::<i8>::default().generate(&0, &10, span_i8.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<i16>::default().generate(&0, &10, span_i16.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<i32>::default().generate(&0, &10, span_i32.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<i64>::default().generate(&0, &10, span_i64.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<i128>::default().generate(&0, &10, span_i128.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<isize>::default().generate(&0, &10, span_isize.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<u8>::default().generate(&0, &10, span_u8.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<u16>::default().generate(&0, &10, span_u16.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<u32>::default().generate(&0, &10, span_u32.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<u64>::default().generate(&0, &10, span_u64.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<u128>::default().generate(&0, &10, span_u128.as_ref()).ticks.is_empty());
-        assert!(!AlignedIntegers::<usize>::default().generate(&0, &10, span_usize.as_ref()).ticks.is_empty());
+        assert!(!AlignedIntegers::<i8>::default()
+            .generate(&0, &10, span_i8.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<i16>::default()
+            .generate(&0, &10, span_i16.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<i32>::default()
+            .generate(&0, &10, span_i32.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<i64>::default()
+            .generate(&0, &10, span_i64.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<i128>::default()
+            .generate(&0, &10, span_i128.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<isize>::default()
+            .generate(&0, &10, span_isize.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<u8>::default()
+            .generate(&0, &10, span_u8.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<u16>::default()
+            .generate(&0, &10, span_u16.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<u32>::default()
+            .generate(&0, &10, span_u32.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<u64>::default()
+            .generate(&0, &10, span_u64.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<u128>::default()
+            .generate(&0, &10, span_u128.as_ref())
+            .ticks
+            .is_empty());
+        assert!(!AlignedIntegers::<usize>::default()
+            .generate(&0, &10, span_usize.as_ref())
+            .ticks
+            .is_empty());
     }
 }

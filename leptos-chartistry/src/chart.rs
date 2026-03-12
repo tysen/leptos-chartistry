@@ -287,7 +287,13 @@ fn RenderChart<X: Tick, Y: Tick>(
         })
     };
 
-    let state = State::new(pre_state, &watch, layout, projection_primary, projection_secondary);
+    let state = State::new(
+        pre_state,
+        &watch,
+        layout,
+        projection_primary,
+        projection_secondary,
+    );
 
     // Render edges
     let edges = edges

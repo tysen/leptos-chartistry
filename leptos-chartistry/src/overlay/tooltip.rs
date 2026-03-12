@@ -25,6 +25,8 @@ pub struct Tooltip<X: Tick, Y: Tick> {
     /// Whether to show X ticks. Default is true.
     // TODO: move to TickLabels
     pub show_x_ticks: RwSignal<bool>,
+    /// Whether to show Y series snippets (colored line indicators). Default is true.
+    pub show_y_snippets: RwSignal<bool>,
     /// X axis formatter.
     pub x_ticks: TickLabels<X>,
     /// Y axis formatter for the primary (left) axis.
@@ -112,6 +114,12 @@ impl<X: Tick, Y: Tick> Tooltip<X, Y> {
         self
     }
 
+    /// Sets whether to show Y series snippets (colored line indicators).
+    pub fn show_y_snippets(self, show_y_snippets: impl Into<bool>) -> Self {
+        self.show_y_snippets.set(show_y_snippets.into());
+        self
+    }
+
     /// Sets the Y tick formatter for the secondary (right) axis.
     pub fn with_y_ticks_secondary(mut self, y_ticks: impl Into<TickLabels<Y>>) -> Self {
         self.y_ticks_secondary = Some(y_ticks.into());
@@ -127,6 +135,7 @@ impl<X: Tick, Y: Tick> Default for Tooltip<X, Y> {
             cursor_distance: RwSignal::new(TOOLTIP_CURSOR_DISTANCE),
             skip_missing: RwSignal::new(false),
             show_x_ticks: RwSignal::new(true),
+            show_y_snippets: RwSignal::new(true),
             x_ticks: TickLabels::default(),
             y_ticks: TickLabels::default(),
             y_ticks_secondary: None,
@@ -220,6 +229,7 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
         skip_missing,
         cursor_distance,
         show_x_ticks,
+        show_y_snippets,
         x_ticks,
         y_ticks,
         y_ticks_secondary,
@@ -306,14 +316,20 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
     let series_tr = {
         let state = state.clone();
         move |(series, y_value): (UseY, String)| {
+            let state = state.clone();
+            // Center Y values when snippets are hidden (single column looks better centered)
+            let text_align = move || if show_y_snippets.get() { "right" } else { "center" };
             view! {
                 <tr>
-                    <td><Snippet series=series state=state.clone() /></td>
+                    <Show when=move || show_y_snippets.get()>
+                        <td><Snippet series=series.clone() state=state.clone() /></td>
+                    </Show>
                     <td
-                        style="white-space: pre; font-family: monospace; text-align: right;"
+                        style="white-space: pre; font-family: monospace;"
+                        style:text-align=text_align
                         style:padding-top=move || format!("{}px", font_height.get() / 4.0)
-                        style:padding-left=move || format!("{}px", font_width.get())>
-                        {y_value}
+                        style:padding-left=move || format!("{}px", font_width.get())
+                        inner_html=y_value>
                     </td>
                 </tr>
             }
@@ -337,7 +353,8 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
                     {x_body}
                 </h2>
                 <table
-                    style="border-collapse: collapse; border-spacing: 0; margin: 0 0 0 auto; padding: 0;"
+                    style="border-collapse: collapse; border-spacing: 0; padding: 0;"
+                    style:margin=move || if show_y_snippets.get() { "0 0 0 auto" } else { "0 auto" }
                     style:font-size=move || format!("{}px", font_height.get())>
                     <tbody>
                         <For

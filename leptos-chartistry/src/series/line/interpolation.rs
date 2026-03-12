@@ -179,6 +179,5 @@ fn tangent(x_prev: f64, x: f64, x_next: f64, y_prev: f64, y: f64, y_next: f64) -
     let dist = x_next - x;
     let para = (slope_prev * dist + slope * dist_prev) / (dist_prev + dist);
     // Tangent: limit to min of both slopes and half the parabolic interpolant
-    (slope_prev.signum() + slope.signum())
-        * slope_prev.abs().min(slope.abs()).min(0.5 * para.abs())
+    (slope_prev.signum() + slope.signum()) * slope_prev.abs().min(slope.abs()).min(0.5 * para.abs())
 }

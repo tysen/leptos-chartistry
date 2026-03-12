@@ -76,7 +76,10 @@ impl<X: Tick, Y: Tick> UseData<X, Y> {
         });
         let range_y_secondary: Memo<Range<Y>> = Memo::new(move |_| {
             data.with(|data| data.range_y_secondary())
-                .maybe_update(vec![series.min_y_secondary.get(), series.max_y_secondary.get()])
+                .maybe_update(vec![
+                    series.min_y_secondary.get(),
+                    series.max_y_secondary.get(),
+                ])
         });
 
         // Sort series by name

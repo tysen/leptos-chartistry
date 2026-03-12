@@ -95,7 +95,9 @@ impl<Y: Tick> YGridLine<Y> {
         UseYGridLine {
             width: self.width,
             colour: self.colour,
-            ticks: self.ticks.generate_y(&state.pre, avail_height, YAxis::Primary),
+            ticks: self
+                .ticks
+                .generate_y(&state.pre, avail_height, YAxis::Primary),
         }
     }
 }

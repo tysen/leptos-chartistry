@@ -25,7 +25,12 @@ enum UseYDesc {
 impl UseY {
     pub(super) fn new_line(id: usize, name: RwSignal<String>, axis: YAxis, line: UseLine) -> Self {
         let desc = UseYDesc::Line(line);
-        Self { id, name, axis, desc }
+        Self {
+            id,
+            name,
+            axis,
+            desc,
+        }
     }
 
     pub(super) fn new_bar(id: usize, name: RwSignal<String>, bar: UseBar) -> Self {
