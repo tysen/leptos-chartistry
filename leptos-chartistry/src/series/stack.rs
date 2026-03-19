@@ -11,6 +11,10 @@ pub const STACK_COLOUR_SCHEME: [Colour; 10] = BATLOW;
 
 /// Draws a stack of lines on top of each other.
 ///
+/// Stacks always use the primary Y-axis. Any [YAxis::Secondary] setting on
+/// individual lines within a stack is ignored, since stacking requires all
+/// lines to share the same axis for cumulative values to be meaningful.
+///
 /// # Example
 /// ```rust
 /// # use leptos_chartistry::*;
@@ -51,7 +55,7 @@ impl<T, Y> Stack<T, Y> {
     }
 
     /// Sets the colour scheme for the stack.
-    pub fn with_colours<Opt>(self, colours: impl Into<ColourScheme>) -> Self {
+    pub fn with_colours(self, colours: impl Into<ColourScheme>) -> Self {
         self.colours.set(colours.into());
         self
     }

@@ -14,12 +14,14 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
             series=series
             data=data
 
-            left=RotatedLabel::start("Side edges...")
-            right=RotatedLabel::end("...point inwards.")
-            bottom=vec![
-                RotatedLabel::middle("You can also add...").into_edge(),
-                RotatedLabel::middle("...multiple labels.").into_edge(),
-            ]
+            x_axis=AxisEdges::new()
+                .end(vec![
+                    RotatedLabel::middle("You can also add...").into_edge(),
+                    RotatedLabel::middle("...multiple labels.").into_edge(),
+                ])
+            y_axis=AxisEdges::new()
+                .start(RotatedLabel::start("Side edges..."))
+                .end(RotatedLabel::end("...point inwards."))
         />
     }
 }

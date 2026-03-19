@@ -9,8 +9,15 @@ pub use line::{
     Interpolation, Line, Marker, MarkerShape, Step, DIVERGING_GRADIENT, LINEAR_GRADIENT,
 };
 pub use stack::{Stack, STACK_COLOUR_SCHEME};
-pub use use_data::{RenderData, UseData};
+pub use use_data::{Range, RenderData, UseData};
 pub use use_y::{Snippet, UseY};
+
+use crate::{
+    colours::{Colour, ColourScheme},
+    Tick,
+};
+use leptos::prelude::*;
+use std::sync::Arc;
 
 /// Specifies which Y-axis a line should be plotted against.
 ///
@@ -37,13 +44,6 @@ pub enum YAxis {
     Secondary,
 }
 
-use crate::{
-    colours::{Colour, ColourScheme},
-    Tick,
-};
-use leptos::prelude::*;
-use std::sync::Arc;
-
 /// Arbitrary colours for a brighter palette than BATLOW
 pub const SERIES_COLOUR_SCHEME: [Colour; 10] = [
     Colour::from_rgb(0x12, 0xA5, 0xED), // Blue
@@ -68,16 +68,16 @@ trait GetYValue<T, Y>: Send + Sync {
 
 /// Describes how to render a series of data. A series is a collection of lines, bars, etc. that share the same X and Y axes.
 ///
-/// See [all examples](http://localhost:8080/examples) for a full list of examples.
+/// See [all examples](https://feral-dot-io.github.io/leptos-chartistry/examples.html) for a full list of examples.
 ///
 /// ## Building a `Series`
 ///
 /// When calling [Chart](crate::Chart) you'll pass `data=Vec<T>`. Each `T` (e.g., from an API request) represents an `X` value (e.g., a timestamp) whose getter is specified in [Series::new]. `Y` values (e.g., floats) are added to the series by adding lines, bars, etc to the series. For example, consider this `T` describing network traffic:
 ///
 /// ```rust
-/// # use chrono::prelude::*;
+///
 /// pub struct Rate {
-///     pub interval: DateTime<Utc>,
+///     pub interval: f64,
 ///     pub in_octets: f64,
 ///     pub out_octets: f64,
 /// }
@@ -88,9 +88,9 @@ trait GetYValue<T, Y>: Send + Sync {
 /// We then build up a `Series` to describe how to render this data. For example:
 ///
 /// ```rust
-/// # use chrono::prelude::*;
+///
 /// # use leptos_chartistry::*;
-/// # struct Rate { interval: DateTime<Utc>, in_octets: f64, out_octets: f64 }
+/// # struct Rate { interval: f64, in_octets: f64, out_octets: f64 }
 /// let series = Series::new(|r: &Rate| r.interval)
 ///     .line(|r: &Rate| r.in_octets)
 ///     .line(|r: &Rate| r.out_octets);
@@ -99,9 +99,9 @@ trait GetYValue<T, Y>: Send + Sync {
 /// This is the simplest example and lacks details such as line names. Another more complete example is:
 ///
 /// ```rust
-/// # use chrono::prelude::*;
+///
 /// # use leptos_chartistry::*;
-/// # struct Rate { interval: DateTime<Utc>, in_octets: f64, out_octets: f64 }
+/// # struct Rate { interval: f64, in_octets: f64, out_octets: f64 }
 /// let series = Series::new(|r: &Rate| r.interval)
 ///    .line(Line::new(|r: &Rate| r.in_octets).with_name("Rx"))
 ///    .line(Line::new(|r: &Rate| r.out_octets).with_name("Tx"));
@@ -120,9 +120,9 @@ trait GetYValue<T, Y>: Send + Sync {
 /// Another approach is to use a [Stack] to stack lines on top of each other. For example if we wanted to chart the total traffic we could use:
 ///
 /// ```rust
-/// # use chrono::prelude::*;
+///
 /// # use leptos_chartistry::*;
-/// # struct Rate { interval: DateTime<Utc>, in_octets: f64, out_octets: f64 }
+/// # struct Rate { interval: f64, in_octets: f64, out_octets: f64 }
 /// let series = Series::new(|r: &Rate| r.interval)
 ///     .stack(Stack::new()
 ///         .line(|r: &Rate| r.in_octets)
@@ -202,8 +202,8 @@ impl<T: Send + Sync, X: Tick, Y: Tick> Series<T, X, Y> {
     }
 
     /// Set the minimum X value. Extends the lower bound of the X axis if set.
-    pub fn with_min_x(self, max_x: impl Into<Option<X>>) -> Self {
-        self.min_x.set(max_x.into());
+    pub fn with_min_x(self, min_x: impl Into<Option<X>>) -> Self {
+        self.min_x.set(min_x.into());
         self
     }
 

@@ -22,7 +22,7 @@ macro_rules! impl_guide_line {
         impl $name {
             fn new(align: AlignOver) -> Self {
                 Self {
-                    align: RwSignal::new(align.into()),
+                    align: RwSignal::new(align),
                     width: RwSignal::new(1.0),
                     colour: RwSignal::new(GUIDE_LINE_COLOUR),
                 }
@@ -113,23 +113,36 @@ pub(super) fn XGuideLine<X: Tick, Y: Tick>(
     let line = line.0;
     let inner = state.layout.inner;
     let mouse_chart = state.mouse_chart;
+    let orientation = state.layout.orientation;
 
-    // Data alignment
+    // Data alignment - get nearest X position in data space
     let nearest_pos_x = state.pre.data.nearest_position_x(state.hover_position_x);
-    let nearest_svg_x = Memo::new(move |_| {
+    // Convert to SVG coordinates
+    let nearest_svg = Memo::new(move |_| {
         nearest_pos_x
             .get()
-            .map(|pos_x| state.projection.get().position_to_svg(pos_x, 0.0).0)
+            .map(|pos_x| state.projection_primary.get().position_to_svg(pos_x, 0.0))
     });
 
     let pos = Signal::derive(move || {
-        let (mouse_x, _) = mouse_chart.get();
-        let x = match line.align.get() {
-            AlignOver::Data => nearest_svg_x.get().unwrap_or(mouse_x),
-            AlignOver::Mouse => mouse_x,
-        };
+        let (mouse_x, mouse_y) = mouse_chart.get();
         let inner = inner.get();
-        Bounds::from_points(x, inner.top_y(), x, inner.bottom_y())
+
+        if orientation.x_is_horizontal() {
+            // X guide line is vertical (shows X position)
+            let x = match line.align.get() {
+                AlignOver::Data => nearest_svg.get().map(|(x, _)| x).unwrap_or(mouse_x),
+                AlignOver::Mouse => mouse_x,
+            };
+            Bounds::from_points(x, inner.top_y(), x, inner.bottom_y())
+        } else {
+            // X guide line is horizontal (X is now vertical axis)
+            let y = match line.align.get() {
+                AlignOver::Data => nearest_svg.get().map(|(_, y)| y).unwrap_or(mouse_y),
+                AlignOver::Mouse => mouse_y,
+            };
+            Bounds::from_points(inner.left_x(), y, inner.right_x(), y)
+        }
     });
 
     view! {
@@ -145,11 +158,20 @@ pub(super) fn YGuideLine<X: Tick, Y: Tick>(
     let line = line.0;
     let inner = state.layout.inner;
     let mouse_chart = state.mouse_chart;
+    let orientation = state.layout.orientation;
+
     // TODO align over
     let pos = Signal::derive(move || {
-        let (_, mouse_y) = mouse_chart.get();
+        let (mouse_x, mouse_y) = mouse_chart.get();
         let inner = inner.get();
-        Bounds::from_points(inner.left_x(), mouse_y, inner.right_x(), mouse_y)
+
+        if orientation.x_is_horizontal() {
+            // Y guide line is horizontal (Y is vertical axis)
+            Bounds::from_points(inner.left_x(), mouse_y, inner.right_x(), mouse_y)
+        } else {
+            // Y guide line is vertical (Y is now horizontal axis)
+            Bounds::from_points(mouse_x, inner.top_y(), mouse_x, inner.bottom_y())
+        }
     });
     view! {
         <GuideLine id="y" width=line.width colour=line.colour state=state pos=pos />

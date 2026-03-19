@@ -224,10 +224,8 @@ pub fn Demo() -> impl IntoView {
                     font_width=font_width
                     debug=debug
                     padding=Signal::derive(move || Padding::from(padding.get()))
-                    top=top.get().into_inner()
-                    right=right.get().into_inner()
-                    bottom=bottom.get().into_inner()
-                    left=left.get().into_inner()
+                    x_axis=AxisEdges { start: top.get().into_inner(), end: bottom.get().into_inner() }
+                    y_axis=AxisEdges { start: left.get().into_inner(), end: right.get().into_inner() }
                     inner=inner.get().into_inner()
                     tooltip=tooltip.clone()
                     series=series.clone()

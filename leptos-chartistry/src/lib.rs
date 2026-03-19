@@ -14,8 +14,7 @@
 //! use leptos::prelude::*;
 //! use leptos_chartistry::*;
 //!
-//! # use chrono::prelude::*;
-//! # struct MyData { x: DateTime<Utc>, y1: f64, y2: f64 }
+//! # struct MyData { x: f64, y1: f64, y2: f64 }
 //! # fn load_data() -> Signal<Vec<MyData>> { Signal::default() }
 //!
 //! # #[component]
@@ -27,10 +26,12 @@
 //!         aspect_ratio=AspectRatio::from_outer_ratio(600.0, 300.0)
 //!
 //!         // Decorate our chart
-//!         top=RotatedLabel::middle("My garden")
-//!         left=TickLabels::aligned_floats()
-//!         right=Legend::end()
-//!         bottom=TickLabels::timestamps()
+//!         x_axis=AxisEdges::new()
+//!             .start(RotatedLabel::middle("My garden"))
+//!             .end(TickLabels::aligned_floats())
+//!         y_axis=AxisEdges::new()
+//!             .start(TickLabels::aligned_floats())
+//!             .end(Legend::end())
 //!         inner=[
 //!             AxisMarker::left_edge().into_inner(),
 //!             AxisMarker::bottom_edge().into_inner(),
@@ -59,6 +60,7 @@ mod debug;
 mod edge;
 mod inner;
 mod layout;
+mod orientation;
 mod overlay;
 mod padding;
 mod projection;
@@ -68,6 +70,7 @@ mod ticks;
 mod use_watched_node;
 
 pub use aspect_ratio::AspectRatio;
+pub use orientation::Orientation;
 pub use chart::Chart;
 pub use colours::{Colour, ColourScheme, DivergingGradient, SequentialGradient};
 pub use edge::Edge;
@@ -82,13 +85,21 @@ pub use layout::{
     legend::Legend,
     rotated_label::{Anchor, RotatedLabel},
     tick_labels::TickLabels,
-    EdgeLayout, IntoEdge, IntoEdge as _,
+    AxisEdges, EdgeLayout, IntoEdge, IntoEdge as _,
 };
-pub use overlay::tooltip::{Tooltip, TooltipPlacement, TooltipSortBy, TOOLTIP_CURSOR_DISTANCE};
+pub use overlay::tooltip::{
+    Tooltip, TooltipData, TooltipPlacement, TooltipSortBy, TOOLTIP_CURSOR_DISTANCE,
+};
 pub use padding::Padding;
 pub use series::{
-    Bar, BarPlacement, Interpolation, Line, Marker, MarkerShape, Series, Stack, Step, YAxis,
-    BAR_GAP, BAR_GAP_INNER, DIVERGING_GRADIENT, LINEAR_GRADIENT, SERIES_COLOUR_SCHEME,
-    STACK_COLOUR_SCHEME,
+    Bar, BarPlacement, Interpolation, Line, Marker, MarkerShape, Series, Snippet, Stack, Step,
+    UseY, YAxis, BAR_GAP, BAR_GAP_INNER, DIVERGING_GRADIENT, LINEAR_GRADIENT,
+    SERIES_COLOUR_SCHEME, STACK_COLOUR_SCHEME,
 };
-pub use ticks::{AlignedFloats, Period, Tick, TickFormat, Timestamps};
+pub use state::{PreState, State};
+pub use ticks::{
+    AlignedFloats, GeneratedTicks, HorizontalSpan, Tick, TickFormat, TickGen, TickSpan,
+    VerticalSpan,
+};
+#[cfg(feature = "timestamps")]
+pub use ticks::{Period, Timestamps};

@@ -16,9 +16,11 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
             data=data
 
             // Decorate our chart
-            top=RotatedLabel::middle("My garden")
-            left=TickLabels::aligned_floats()
-            bottom=Legend::end()
+            x_axis=AxisEdges::new()
+                .start(RotatedLabel::middle("My garden"))
+                .end(Legend::end())
+            y_axis=AxisEdges::new()
+                .start(TickLabels::aligned_floats())
             inner=[
                 // Standard set of inner layout options
                 AxisMarker::left_edge().into_inner(),

@@ -176,46 +176,81 @@ pub fn RenderBar<X: Tick, Y: Tick>(
             .len()
     });
 
+    let orientation = state.layout.orientation;
+
     let rects = move || {
         positions.with(|positions| {
-            // Find the bottom Y position of each bar
-            // TODO Edge placement makes no sense with negative data
-            let bottom_y = match bar.placement.get() {
-                BarPlacement::Zero => state.svg_zero.get().1,
-                BarPlacement::Edge => state.layout.inner.get().bottom_y(),
-            };
-
-            // Find width of each X position
-            // Note: this should possibly be on Layout
             let gap = bar.gap.get().clamp(0.0, 1.0);
-            let width = state.layout.x_width.get() * (1.0 - gap);
-            // Find width of each group in an X position
             let group_gap = bar.group_gap.get().clamp(0.0, 1.0);
-            let group_width = width / bars.get() as f64;
-            let group_width_inner = group_width * (1.0 - group_gap);
-            let group_gap = group_width * group_gap;
+            let inner = state.layout.inner.get();
 
-            let offset = group_gap / 2.0 - width / 2.0;
-            positions
-                .iter()
-                .map(|&(x, y)| {
-                    let height = bottom_y - y;
-                    let (y, height) = if height.is_sign_positive() {
-                        (y, height)
-                    } else {
-                        (bottom_y, -height) // Negative data point
-                    };
-                    view! {
-                        <rect
-                            x=x + group_width * bar.group_id as f64 + offset
-                            y=y
-                            width=group_width_inner
-                            height=height />
-                    }
+            if orientation.x_is_horizontal() {
+                // Vertical bars
+                let bottom_y = match bar.placement.get() {
+                    BarPlacement::Zero => state.svg_zero.get().1,
+                    BarPlacement::Edge => inner.bottom_y(),
+                };
+
+                let width = state.layout.x_width.get() * (1.0 - gap);
+                let group_width = width / bars.get() as f64;
+                let group_width_inner = group_width * (1.0 - group_gap);
+                let group_gap_px = group_width * group_gap;
+                let offset = group_gap_px / 2.0 - width / 2.0;
+
+                positions
+                    .iter()
+                    .map(|&(x, y)| {
+                        let height = bottom_y - y;
+                        let (y, height) = if height.is_sign_positive() {
+                            (y, height)
+                        } else {
+                            (bottom_y, -height)
+                        };
+                        view! {
+                            <rect
+                                x=x + group_width * bar.group_id as f64 + offset
+                                y=y
+                                width=group_width_inner
+                                height=height />
+                        }
+                        .into_any()
+                    })
+                    .collect_view()
                     .into_any()
-                })
-                .collect_view()
-                .into_any()
+            } else {
+                // Horizontal bars
+                let left_x = match bar.placement.get() {
+                    BarPlacement::Zero => state.svg_zero.get().0,
+                    BarPlacement::Edge => inner.left_x(),
+                };
+
+                let height = state.layout.y_height.get() * (1.0 - gap);
+                let group_height = height / bars.get() as f64;
+                let group_height_inner = group_height * (1.0 - group_gap);
+                let group_gap_px = group_height * group_gap;
+                let offset = group_gap_px / 2.0 - height / 2.0;
+
+                positions
+                    .iter()
+                    .map(|&(x, y)| {
+                        let width = x - left_x;
+                        let (x, width) = if width.is_sign_positive() {
+                            (left_x, width)
+                        } else {
+                            (x, -width)
+                        };
+                        view! {
+                            <rect
+                                x=x
+                                y=y + group_height * bar.group_id as f64 + offset
+                                width=width
+                                height=group_height_inner />
+                        }
+                        .into_any()
+                    })
+                    .collect_view()
+                    .into_any()
+            }
         })
     };
     view! {

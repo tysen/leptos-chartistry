@@ -35,7 +35,8 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
             data=data
 
             // Markers are also shown in the legend
-            bottom=Legend::end()
+            x_axis=AxisEdges::new()
+                .end(Legend::end())
         />
     }
 }

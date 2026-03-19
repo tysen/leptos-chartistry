@@ -32,9 +32,11 @@ pub fn AspectRatioSunspots(debug: Signal<bool>) -> impl IntoView {
                 debug=debug
                 aspect_ratio=AspectRatio::from_env_width(400.0)
 
-                top=RotatedLabel::middle("Daily sunspots")
-                left=y_ticks.clone()
-                bottom=x_ticks.clone()
+                x_axis=AxisEdges::new()
+                    .start(RotatedLabel::middle("Daily sunspots"))
+                    .end(x_ticks.clone())
+                y_axis=AxisEdges::new()
+                    .start(y_ticks.clone())
                 inner=vec![
                     AxisMarker::left_edge().into_inner(),
                     AxisMarker::horizontal_zero().into_inner(),
@@ -63,7 +65,8 @@ pub fn AspectRatioSunspots(debug: Signal<bool>) -> impl IntoView {
                 debug=debug
                 aspect_ratio=AspectRatio::from_env_width_apply_ratio(15.0)
 
-                bottom=x_ticks.clone()
+                x_axis=AxisEdges::new()
+                    .end(x_ticks.clone())
                 inner=vec![
                     XGridLine::from_ticks(x_ticks.clone()).into_inner(),
                     XGuideLine::over_data().into_inner(),

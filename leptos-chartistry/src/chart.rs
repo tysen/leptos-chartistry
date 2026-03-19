@@ -2,7 +2,8 @@ use crate::{
     aspect_ratio::KnownAspectRatio,
     debug::DebugRect,
     inner::InnerLayout,
-    layout::{EdgeLayout, Layout},
+    layout::{AxisEdges, Layout},
+    orientation::Orientation,
     overlay::tooltip::Tooltip,
     projection::Projection,
     series::{RenderData, UseData},
@@ -26,8 +27,7 @@ pub const FONT_WIDTH: f64 = 10.0;
 /// use leptos::prelude::*;
 /// use leptos_chartistry::*;
 ///
-/// # use chrono::prelude::*;
-/// # struct MyData { x: DateTime<Utc>, y1: f64, y2: f64 }
+/// # struct MyData { x: f64, y1: f64, y2: f64 }
 /// # fn load_data() -> Signal<Vec<MyData>> { Signal::default() }
 ///
 /// # #[component]
@@ -39,10 +39,12 @@ pub const FONT_WIDTH: f64 = 10.0;
 ///         aspect_ratio=AspectRatio::from_outer_ratio(600.0, 300.0)
 ///
 ///         // Decorate our chart
-///         top=RotatedLabel::middle("My garden")
-///         left=TickLabels::aligned_floats()
-///         right=Legend::end()
-///         bottom=TickLabels::timestamps()
+///         x_axis=AxisEdges::new()
+///             .start(RotatedLabel::middle("My garden"))
+///             .end(TickLabels::aligned_floats())
+///         y_axis=AxisEdges::new()
+///             .start(TickLabels::aligned_floats())
+///             .end(Legend::end())
 ///         inner=[
 ///             AxisMarker::left_edge().into_inner(),
 ///             AxisMarker::bottom_edge().into_inner(),
@@ -65,9 +67,7 @@ pub const FONT_WIDTH: f64 = 10.0;
 ///
 /// ## Layout props
 ///
-/// The chart is built up from layout components. Each edge has a `top`, `right`, `bottom`, and `left` prop while inside the chart has the `inner` prop. These layout props follow the builder pattern where you'll create a component, configure it to your liking, and then call [IntoEdge](crate::IntoEdge) or [IntoInner](crate::IntoInner) to get an edge layout or inner layout respectively.
-///
-/// Here's an example of building a [TickLabels](crate::TickLabels) component, setting the minimum number of characters to 5, and then converting it for use to an edge layout:
+/// The chart uses semantic axis-based layout. Specify `x_axis` and `y_axis` with [AxisEdges] to place components on the appropriate edges. The system automatically maps these to physical edges based on the chart's [Orientation].
 ///
 /// ```rust
 /// # use leptos_chartistry::*;
@@ -145,18 +145,21 @@ pub fn Chart<T: Send + Sync + 'static, X: Tick, Y: Tick>(
     #[prop(into, optional)]
     padding: Option<Signal<Padding>>,
 
-    /// Top edge components. See [IntoEdge](crate::IntoEdge) for details. Default is none.
+    /// Chart axis orientation. Controls the direction of the X axis.
+    /// Default is `LeftToRight` (standard horizontal chart).
     #[prop(into, optional)]
-    top: Vec<EdgeLayout<X>>,
-    /// Right edge components. See [IntoEdge](crate::IntoEdge) for details. Default is none.
+    orientation: Signal<Orientation>,
+
+    /// X-axis edge components. Placed on edges perpendicular to the X axis
+    /// (top/bottom in horizontal mode, left/right in vertical mode).
     #[prop(into, optional)]
-    right: Vec<EdgeLayout<Y>>,
-    /// Bottom edge components. See [IntoEdge](crate::IntoEdge) for details. Default is none.
+    x_axis: AxisEdges<X>,
+
+    /// Y-axis edge components. Placed on edges perpendicular to the Y axis
+    /// (left/right in horizontal mode, top/bottom in vertical mode).
+    /// `start` maps to `YAxis::Primary`, `end` maps to `YAxis::Secondary`.
     #[prop(into, optional)]
-    bottom: Vec<EdgeLayout<X>>,
-    /// Left edge components. See [IntoEdge](crate::IntoEdge) for details. Default is none.
-    #[prop(into, optional)]
-    left: Vec<EdgeLayout<Y>>,
+    y_axis: AxisEdges<Y>,
 
     /// Inner chart area components. Does not render lines -- use [Series] for that. See [IntoInner](crate::IntoInner) for details. Default is none.
     #[prop(into, optional)]
@@ -197,11 +200,11 @@ pub fn Chart<T: Send + Sync + 'static, X: Tick, Y: Tick>(
             .unwrap_or_else(move || Padding::from(font_width.get()))
     });
 
-    // Edges are added top to bottom, left to right. Layout compoeses inside out:
-    let mut top = top;
-    let mut left = left;
-    top.reverse();
-    left.reverse();
+    // Edges are added outside-in. Layout composes inside out, so reverse start edges:
+    let mut x_axis = x_axis;
+    let mut y_axis = y_axis;
+    x_axis.start.reverse();
+    y_axis.start.reverse();
 
     // Build data
     let data = UseData::new(series, data);
@@ -220,10 +223,9 @@ pub fn Chart<T: Send + Sync + 'static, X: Tick, Y: Tick>(
                     watch=watch.clone()
                     pre_state=pre.clone()
                     aspect_ratio=calc
-                    top=top.clone()
-                    right=right.clone()
-                    bottom=bottom.clone()
-                    left=left.clone()
+                    orientation=orientation
+                    x_axis=x_axis.clone()
+                    y_axis=y_axis.clone()
                     inner=inner.clone()
                     tooltip=tooltip.clone()
                 />}.into_any()}
@@ -237,27 +239,33 @@ fn RenderChart<X: Tick, Y: Tick>(
     watch: UseWatchedNode,
     pre_state: PreState<X, Y>,
     aspect_ratio: Memo<KnownAspectRatio>,
-    top: Vec<EdgeLayout<X>>,
-    right: Vec<EdgeLayout<Y>>,
-    bottom: Vec<EdgeLayout<X>>,
-    left: Vec<EdgeLayout<Y>>,
+    orientation: Signal<Orientation>,
+    x_axis: AxisEdges<X>,
+    y_axis: AxisEdges<Y>,
     inner: Vec<InnerLayout<X, Y>>,
     tooltip: Tooltip<X, Y>,
 ) -> impl IntoView {
     let debug = pre_state.debug;
+    // Orientation is fixed at render time — changing it requires rebuilding the chart
+    let orientation = orientation.get_untracked();
 
     // Compose edges
-    let (layout, edges) = Layout::compose(&top, &right, &bottom, &left, aspect_ratio, &pre_state);
+    let (layout, edges) =
+        Layout::compose(&x_axis, &y_axis, aspect_ratio, &pre_state, orientation);
 
     // Finalise state - build projections for both axes
     let inner_bounds = {
         let includes_bars = pre_state.data.includes_bars;
         Memo::new(move |_| {
             let mut inner = layout.inner.get();
-            // If we include bars, shrink the sides by half the width of X
             if includes_bars.get() {
-                let half = layout.x_width.get() / 2.0;
-                inner = inner.shrink(0.0, half, 0.0, half);
+                if orientation.x_is_horizontal() {
+                    let half = layout.x_width.get() / 2.0;
+                    inner = inner.shrink(0.0, half, 0.0, half);
+                } else {
+                    let half = layout.y_height.get() / 2.0;
+                    inner = inner.shrink(half, 0.0, half, 0.0);
+                }
             }
             inner
         })
@@ -267,10 +275,11 @@ fn RenderChart<X: Tick, Y: Tick>(
         let range_x = pre_state.data.range_x;
         let range_y = pre_state.data.range_y_primary;
         Memo::new(move |_| {
-            Projection::new(
+            Projection::with_orientation(
                 inner_bounds.get(),
                 range_x.get().positions(),
                 range_y.get().positions(),
+                orientation,
             )
         })
     };
@@ -279,10 +288,11 @@ fn RenderChart<X: Tick, Y: Tick>(
         let range_x = pre_state.data.range_x;
         let range_y = pre_state.data.range_y_secondary;
         Memo::new(move |_| {
-            Projection::new(
+            Projection::with_orientation(
                 inner_bounds.get(),
                 range_x.get().positions(),
                 range_y.get().positions(),
+                orientation,
             )
         })
     };

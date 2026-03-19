@@ -2,12 +2,14 @@ use super::{Format, Span};
 use crate::Tick;
 use std::sync::Arc;
 
+/// Measures tick space consumption along a vertical axis.
 pub struct VerticalSpan {
     avail_height: f64,
     line_height: f64,
 }
 
 impl VerticalSpan {
+    /// Creates a new vertical span with the given line height and available height.
     pub fn new(line_height: f64, avail_height: f64) -> Self {
         Self {
             avail_height,
@@ -28,6 +30,7 @@ impl<Tick> Span<Tick> for VerticalSpan {
 
 pub type TickFormatFn<Tick> = dyn (Fn(&Tick, &dyn Format<Tick = Tick>) -> String) + Send + Sync;
 
+/// Measures tick space consumption along a horizontal axis.
 pub struct HorizontalSpan<XY: Tick> {
     font_width: f64,
     min_chars: usize,
@@ -37,6 +40,7 @@ pub struct HorizontalSpan<XY: Tick> {
 }
 
 impl<XY: Tick> HorizontalSpan<XY> {
+    /// Creates a new horizontal span with the given font metrics and available width.
     pub fn new(
         font_width: f64,
         min_chars: usize,
@@ -53,6 +57,7 @@ impl<XY: Tick> HorizontalSpan<XY> {
         }
     }
 
+    /// Returns a format function that delegates to the tick state's default format.
     pub fn identity_format() -> Arc<TickFormatFn<XY>> {
         Arc::new(|tick, state| state.format(tick))
     }

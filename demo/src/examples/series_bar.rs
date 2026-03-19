@@ -15,7 +15,8 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
             series=series
             data=data
 
-            left=TickLabels::aligned_floats()
+            y_axis=AxisEdges::new()
+                .start(TickLabels::aligned_floats())
             inner=[
                 AxisMarker::left_edge().into_inner(),
                 AxisMarker::bottom_edge().into_inner(),

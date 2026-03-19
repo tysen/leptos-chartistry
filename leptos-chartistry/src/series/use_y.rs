@@ -6,10 +6,13 @@ use super::{
 use crate::{bounds::Bounds, debug::DebugRect, state::State, Tick};
 use leptos::{either::Either, prelude::*};
 
+/// A processed Y series ready for rendering (line or bar).
 #[derive(Clone, Debug, PartialEq)]
 #[non_exhaustive]
 pub struct UseY {
+    /// Unique identifier for this series.
     pub id: usize,
+    /// Display name of the series.
     pub name: RwSignal<String>,
     /// Which Y-axis this series is plotted against.
     pub axis: YAxis,
@@ -55,6 +58,7 @@ impl UseY {
         Memo::new(move |_| Bounds::new(font_width.get() * 2.5, font_height.get()))
     }
 
+    /// Returns the width of a snippet (taster + gap) for layout calculations.
     pub fn snippet_width(font_height: Memo<f64>, font_width: Memo<f64>) -> Signal<f64> {
         let taster_bounds = Self::taster_bounds(font_height, font_width);
         Signal::derive(move || taster_bounds.get().width() + font_width.get())
@@ -68,16 +72,22 @@ pub(super) fn RenderUseY<X: Tick, Y: Tick>(
     positions: Signal<Vec<(f64, f64)>>,
 ) -> impl IntoView {
     let desc = use_y.desc.clone();
+    let x_is_horizontal = state.layout.orientation.x_is_horizontal();
     match desc {
-        UseYDesc::Line(line) => view! {
-            <RenderLine
-                use_y=use_y
-                line=line
-                data=state.pre.data
-                positions=positions
-                markers=positions />
+        UseYDesc::Line(line) => {
+            let inner_bounds = state.layout.inner;
+            view! {
+                <RenderLine
+                    use_y=use_y
+                    line=line
+                    data=state.pre.data
+                    positions=positions
+                    markers=positions
+                    x_is_horizontal=x_is_horizontal
+                    inner_bounds=inner_bounds />
+            }
+            .into_any()
         }
-        .into_any(),
         UseYDesc::Bar(bar) => {
             view! {<RenderBar bar=bar state=state positions=positions />}.into_any()
         }
@@ -119,13 +129,15 @@ fn Taster<X: Tick, Y: Tick>(series: UseY, state: State<X, Y>) -> impl IntoView {
                 let bounds = bounds.get();
                 vec![(bounds.centre_x(), bounds.centre_y() + Y_OFFSET)]
             });
+            // Taster always renders horizontally
             Either::Left(view! {
                 <RenderLine
                     use_y=series.clone()
                     line=line.clone()
                     data=state.pre.data
                     positions=positions
-                    markers=markers />
+                    markers=markers
+                    x_is_horizontal=true />
             })
         }
         UseYDesc::Bar(bar) => Either::Right(view! {

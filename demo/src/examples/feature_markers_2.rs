@@ -35,7 +35,8 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
             series=series
             data=data
 
-            bottom=Legend::start()
+            x_axis=AxisEdges::new()
+                .end(Legend::start())
         />
     }
 }

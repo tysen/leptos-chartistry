@@ -3,15 +3,16 @@ use crate::{
     bounds::Bounds,
     debug::DebugRect,
     edge::Edge,
-    series::YAxis,
+    series::Range,
     state::{PreState, State},
     ticks::{
         AlignedFloats, GeneratedTicks, HorizontalSpan, TickFormat, TickFormatFn, TickGen,
-        Timestamps, VerticalSpan,
+        VerticalSpan,
     },
     Tick,
 };
-use chrono::prelude::*;
+#[cfg(feature = "timestamps")]
+use crate::ticks::Timestamps;
 use leptos::prelude::*;
 use std::sync::Arc;
 
@@ -31,9 +32,17 @@ pub struct TickLabels<XY: Tick> {
     pub generator: RwSignal<Arc<dyn TickGen<Tick = XY> + Send + Sync>>,
 }
 
+/// Whether a tick label represents X or Y data, used for projection positioning.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(super) enum DataAxis {
+    X,
+    Y,
+}
+
 #[derive(Clone)]
 pub struct UseTickLabels {
     ticks: Signal<Vec<(f64, String)>>,
+    data_axis: DataAxis,
 }
 
 impl<XY: Tick> Clone for TickLabels<XY> {
@@ -59,9 +68,10 @@ impl TickLabels<f64> {
     }
 }
 
-impl<Tz> TickLabels<DateTime<Tz>>
+#[cfg(feature = "timestamps")]
+impl<Tz> TickLabels<chrono::DateTime<Tz>>
 where
-    Tz: TimeZone + Send + Sync + 'static,
+    Tz: chrono::TimeZone + Send + Sync + 'static,
     Tz::Offset: std::fmt::Display + Send + Sync,
 {
     /// Creates a new tick label generator for timestamps. See [Timestamps] for details.
@@ -121,22 +131,23 @@ where
     }
 }
 
-impl<X: Tick> TickLabels<X> {
-    pub(crate) fn generate_x<Y: Tick>(
+impl<XY: Tick> TickLabels<XY> {
+    /// Generate ticks for display on a horizontal physical edge.
+    pub(crate) fn generate_horizontal<X: Tick, Y: Tick>(
         &self,
+        range: Memo<Range<XY>>,
         state: &PreState<X, Y>,
         avail_width: Signal<f64>,
-    ) -> Memo<GeneratedTicks<X>> {
+    ) -> Memo<GeneratedTicks<XY>> {
         let font_width = state.font_width;
         let padding = state.padding;
-        let range_x = state.data.range_x;
         let TickLabels {
             min_chars,
             format,
             generator,
         } = self.clone();
         Memo::new(move |_| {
-            range_x
+            range
                 .get()
                 .range()
                 .map(|(first, last)| {
@@ -153,39 +164,18 @@ impl<X: Tick> TickLabels<X> {
         })
     }
 
-    pub(super) fn fixed_height<Y: Tick>(&self, state: &PreState<X, Y>) -> Signal<f64> {
-        let font_height = state.font_height;
-        let padding = state.padding;
-        Signal::derive(move || font_height.get() + padding.get().height())
-    }
-
-    pub(super) fn to_horizontal_use<Y: Tick>(
+    /// Generate ticks for display on a vertical physical edge.
+    pub(crate) fn generate_vertical<X: Tick, Y: Tick>(
         &self,
-        state: &PreState<X, Y>,
-        avail_width: Memo<f64>,
-    ) -> UseLayout {
-        UseLayout::TickLabels(UseTickLabels {
-            ticks: self.map_ticks(self.generate_x(state, avail_width.into())),
-        })
-    }
-}
-
-impl<Y: Tick> TickLabels<Y> {
-    pub(crate) fn generate_y<X: Tick>(
-        &self,
+        range: Memo<Range<XY>>,
         state: &PreState<X, Y>,
         avail_height: Signal<f64>,
-        axis: YAxis,
-    ) -> Memo<GeneratedTicks<Y>> {
+    ) -> Memo<GeneratedTicks<XY>> {
         let font_height = state.font_height;
         let padding = state.padding;
-        let range_y = match axis {
-            YAxis::Primary => state.data.range_y_primary,
-            YAxis::Secondary => state.data.range_y_secondary,
-        };
         let generator = self.generator;
         Memo::new(move |_| {
-            range_y
+            range
                 .get()
                 .range()
                 .map(|(first, last)| {
@@ -199,16 +189,39 @@ impl<Y: Tick> TickLabels<Y> {
         })
     }
 
-    pub(super) fn to_vertical_use<X: Tick>(
+    pub(super) fn fixed_height<X: Tick, Y: Tick>(&self, state: &PreState<X, Y>) -> Signal<f64> {
+        let font_height = state.font_height;
+        let padding = state.padding;
+        Signal::derive(move || font_height.get() + padding.get().height())
+    }
+
+    pub(super) fn to_horizontal_use<X: Tick, Y: Tick>(
         &self,
+        range: Memo<Range<XY>>,
+        state: &PreState<X, Y>,
+        avail_width: Memo<f64>,
+        data_axis: DataAxis,
+    ) -> UseLayout {
+        UseLayout::TickLabels(UseTickLabels {
+            ticks: self.map_ticks(self.generate_horizontal(range, state, avail_width.into())),
+            data_axis,
+        })
+    }
+
+    pub(super) fn to_vertical_use<X: Tick, Y: Tick>(
+        &self,
+        range: Memo<Range<XY>>,
         state: &PreState<X, Y>,
         avail_height: Memo<f64>,
-        axis: YAxis,
+        data_axis: DataAxis,
     ) -> UseVerticalLayout {
-        let ticks = self.map_ticks(self.generate_y(state, avail_height.into(), axis));
+        let ticks = self.map_ticks(self.generate_vertical(range, state, avail_height.into()));
         UseVerticalLayout {
             width: mk_width(self.min_chars, state, ticks),
-            layout: UseLayout::TickLabels(UseTickLabels { ticks }),
+            layout: UseLayout::TickLabels(UseTickLabels {
+                ticks,
+                data_axis,
+            }),
         }
     }
 }
@@ -258,6 +271,7 @@ pub(super) fn TickLabels<X: Tick, Y: Tick>(
     bounds: Memo<Bounds>,
     state: State<X, Y>,
 ) -> impl IntoView {
+    let data_axis = ticks.data_axis;
     let ticks = move || {
         // Align vertical labels
         let ticks = ticks.ticks.get();
@@ -272,7 +286,7 @@ pub(super) fn TickLabels<X: Tick, Y: Tick>(
             .into_iter()
             .map(|tick| {
                 view! {
-                    <TickLabel edge=edge outer=bounds state=state.clone() tick=tick />
+                    <TickLabel edge=edge data_axis=data_axis outer=bounds state=state.clone() tick=tick />
                 }
             })
             .collect_view()
@@ -287,6 +301,7 @@ pub(super) fn TickLabels<X: Tick, Y: Tick>(
 #[component]
 fn TickLabel<X: Tick, Y: Tick>(
     edge: Edge,
+    data_axis: DataAxis,
     outer: Memo<Bounds>,
     state: State<X, Y>,
     tick: (f64, String),
@@ -295,12 +310,21 @@ fn TickLabel<X: Tick, Y: Tick>(
     let font_height = state.pre.font_height;
     let font_width = state.pre.font_width;
     let padding = state.pre.padding;
-    // Use the appropriate projection based on edge
-    // Left edge uses primary, right edge uses secondary
-    let projection = match edge {
-        Edge::Left => state.projection_primary,
-        Edge::Right => state.projection_secondary,
-        _ => state.projection_primary, // Top/Bottom use primary for X-axis
+
+    // Select projection: Y data uses Primary/Secondary based on edge side,
+    // X data always uses primary
+    let projection = match data_axis {
+        DataAxis::X => state.projection_primary,
+        DataAxis::Y => {
+            // For Y data, "start" side uses primary, "end" side uses secondary.
+            // In normal mode: left=primary, right=secondary
+            // In rotated mode: top=primary, bottom=secondary
+            // The edge assignment already handles this mapping in compose()
+            match edge {
+                Edge::Right | Edge::Bottom => state.projection_secondary,
+                _ => state.projection_primary,
+            }
+        }
     };
 
     let (position, label) = tick;
@@ -313,16 +337,22 @@ fn TickLabel<X: Tick, Y: Tick>(
 
         let proj = projection.get();
         let outer = outer.get();
+
+        // Get SVG position based on data axis
+        let svg_pos = match data_axis {
+            DataAxis::X => proj.position_to_svg(position, 0.0),
+            DataAxis::Y => proj.position_to_svg(0.0, position),
+        };
+
+        // Position based on physical edge
         match edge {
             Edge::Top | Edge::Bottom => {
-                let (x, _) = proj.position_to_svg(position, 0.0);
-                let x = x - width / 2.0;
+                let x = svg_pos.0 - width / 2.0;
                 Bounds::from_points(x, outer.top_y(), x + width, outer.bottom_y())
             }
 
             Edge::Left | Edge::Right => {
-                let (_, y) = proj.position_to_svg(0.0, position);
-                let y = y - height / 2.0;
+                let y = svg_pos.1 - height / 2.0;
                 Bounds::from_points(outer.left_x(), y, outer.right_x(), y + height)
             }
         }

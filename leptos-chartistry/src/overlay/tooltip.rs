@@ -5,10 +5,32 @@ use crate::{
     Tick, TickLabels, AXIS_MARKER_COLOUR,
 };
 use leptos::prelude::*;
-use std::cmp::{Ordering, Reverse};
+use std::{
+    cmp::{Ordering, Reverse},
+    sync::Arc,
+};
 
 /// Default gap distance from cursor to tooltip when shown.
 pub const TOOLTIP_CURSOR_DISTANCE: f64 = 10.0;
+
+/// Data available to custom tooltip renderers.
+#[derive(Clone)]
+#[non_exhaustive]
+pub struct TooltipData<X: Tick, Y: Tick> {
+    /// The nearest X data value under the cursor.
+    pub nearest_x: Memo<Option<X>>,
+    /// Y values per series at nearest X, sorted and filtered per tooltip config.
+    pub nearest_y: Memo<Vec<(UseY, Option<Y>)>>,
+    /// Full chart state (mouse position, projections, layout, etc.).
+    pub state: State<X, Y>,
+}
+
+/// Custom tooltip body renderer.
+pub type TooltipBodyFn<X, Y> = Arc<dyn Fn(TooltipData<X, Y>) -> AnyView + Send + Sync>;
+/// Custom tooltip X header renderer.
+pub type TooltipXHeaderFn<X> = Arc<dyn Fn(Memo<Option<X>>) -> AnyView + Send + Sync>;
+/// Custom tooltip Y row renderer.
+pub type TooltipYRowFn<Y> = Arc<dyn Fn(UseY, Option<Y>, String) -> AnyView + Send + Sync>;
 
 /// Builds a mouse tooltip that shows X and Y values for the nearest data. Drawn in HTML as an overlay.
 #[derive(Clone, Debug, PartialEq)]
@@ -34,6 +56,17 @@ pub struct Tooltip<X: Tick, Y: Tick> {
     /// Y axis formatter for the secondary (right) axis.
     /// If None, falls back to using y_ticks for all series.
     pub y_ticks_secondary: Option<TickLabels<Y>>,
+
+    /// Custom view for the entire tooltip body. Replaces the default header + table.
+    /// When set, `x_header` and `y_row` are ignored.
+    pub body: Option<RwSignal<TooltipBodyFn<X, Y>>>,
+    /// Custom view for the X header. Replaces the default `<h2>` with formatted text.
+    /// Ignored if `body` is set.
+    pub x_header: Option<RwSignal<TooltipXHeaderFn<X>>>,
+    /// Custom view for each Y series row. Replaces the default `<tr>` with snippet + text value.
+    /// Receives: series info, raw Y value, and the pre-formatted string.
+    /// Ignored if `body` is set.
+    pub y_row: Option<RwSignal<TooltipYRowFn<Y>>>,
 }
 
 /// Where the tooltip is place when shown.
@@ -125,6 +158,37 @@ impl<X: Tick, Y: Tick> Tooltip<X, Y> {
         self.y_ticks_secondary = Some(y_ticks.into());
         self
     }
+
+    /// Sets a custom view for the entire tooltip body. Replaces the default header + table.
+    /// When set, `x_header` and `y_row` are ignored.
+    pub fn with_body(
+        mut self,
+        f: impl Fn(TooltipData<X, Y>) -> AnyView + Send + Sync + 'static,
+    ) -> Self {
+        self.body = Some(RwSignal::new(Arc::new(f)));
+        self
+    }
+
+    /// Sets a custom view for the X header. Replaces the default `<h2>` with formatted text.
+    /// Ignored if `body` is set.
+    pub fn with_x_header(
+        mut self,
+        f: impl Fn(Memo<Option<X>>) -> AnyView + Send + Sync + 'static,
+    ) -> Self {
+        self.x_header = Some(RwSignal::new(Arc::new(f)));
+        self
+    }
+
+    /// Sets a custom view for each Y series row. Replaces the default `<tr>` with snippet + text value.
+    /// Receives: series info, raw Y value, and the pre-formatted string.
+    /// Ignored if `body` is set.
+    pub fn with_y_row(
+        mut self,
+        f: impl Fn(UseY, Option<Y>, String) -> AnyView + Send + Sync + 'static,
+    ) -> Self {
+        self.y_row = Some(RwSignal::new(Arc::new(f)));
+        self
+    }
 }
 
 impl<X: Tick, Y: Tick> Default for Tooltip<X, Y> {
@@ -139,6 +203,9 @@ impl<X: Tick, Y: Tick> Default for Tooltip<X, Y> {
             x_ticks: TickLabels::default(),
             y_ticks: TickLabels::default(),
             y_ticks_secondary: None,
+            body: None,
+            x_header: None,
+            y_row: None,
         }
     }
 }
@@ -233,6 +300,9 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
         x_ticks,
         y_ticks,
         y_ticks_secondary,
+        body,
+        x_header,
+        y_row,
     } = tooltip;
     let debug = state.pre.debug;
     let font_height = state.pre.font_height;
@@ -240,12 +310,14 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
     let padding = state.pre.padding;
     let inner = state.layout.inner;
 
+    // Nearest X data value
+    let nearest_data_x = state.pre.data.nearest_data_x(state.hover_position_x);
+
     let x_body = {
-        let nearest_data_x = state.pre.data.nearest_data_x(state.hover_position_x);
         let x_format = x_ticks.format;
         let avail_width = Signal::derive(move || inner.read().width());
-        let x_ticks = x_ticks.generate_x(&state.pre, avail_width);
-        move || {
+        let x_ticks = x_ticks.generate_horizontal(state.pre.data.range_x, &state.pre, avail_width);
+        Signal::derive(move || {
             // Hide ticks?
             if !show_x_ticks.get() {
                 return "".to_string();
@@ -255,35 +327,36 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
                 || "no data".to_string(),
                 |x_value| (x_format)(x_value, x_ticks.read().state.as_ref()),
             )
-        }
+        })
     };
 
     // Primary axis Y formatter
     let avail_height = Signal::derive(move || inner.read().height());
     let y_format_primary = y_ticks.format;
-    let y_ticks_primary = y_ticks.generate_y(&state.pre, avail_height, YAxis::Primary);
+    let y_ticks_primary = y_ticks.generate_vertical(state.pre.data.range_y_primary, &state.pre, avail_height);
 
     // Secondary axis Y formatter (falls back to primary if not set)
     let (y_format_secondary, y_ticks_secondary_gen) = if let Some(y_ticks_sec) = y_ticks_secondary {
         let format = y_ticks_sec.format;
-        let ticks = y_ticks_sec.generate_y(&state.pre, avail_height, YAxis::Secondary);
+        let ticks = y_ticks_sec.generate_vertical(state.pre.data.range_y_secondary, &state.pre, avail_height);
         (format, ticks)
     } else {
         // Fall back to primary formatter for secondary axis too
         (y_format_primary, y_ticks_primary)
     };
 
-    let format_y_value = move |axis: YAxis, y_value: Option<Y>| {
-        let (y_format, y_ticks) = match axis {
-            YAxis::Primary => (y_format_primary, y_ticks_primary),
-            YAxis::Secondary => (y_format_secondary, y_ticks_secondary_gen),
-        };
-        let y_format = y_format.get();
-        y_value.as_ref().map_or_else(
-            || "-".to_string(),
-            |y_value| (y_format)(y_value, y_ticks.read().state.as_ref()),
-        )
-    };
+    let format_y_value: Arc<dyn Fn(YAxis, Option<Y>) -> String + Send + Sync> =
+        Arc::new(move |axis: YAxis, y_value: Option<Y>| {
+            let (y_format, y_ticks) = match axis {
+                YAxis::Primary => (y_format_primary, y_ticks_primary),
+                YAxis::Secondary => (y_format_secondary, y_ticks_secondary_gen),
+            };
+            let y_format = y_format.get();
+            y_value.as_ref().map_or_else(
+                || "-".to_string(),
+                |y_value| (y_format)(y_value, y_ticks.read().state.as_ref()),
+            )
+        });
 
     let nearest_y_values = {
         let nearest_data_y = state.pre.data.nearest_data_y(state.hover_position_x);
@@ -302,40 +375,17 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
         })
     };
 
-    let nearest_data_y = move || {
-        nearest_y_values
-            .get()
-            .into_iter()
-            .map(|(line, y_value)| {
-                let y_value = format_y_value(line.axis, y_value);
-                (line, y_value)
-            })
-            .collect::<Vec<_>>()
+    // Build tooltip data for custom renderers
+    let tooltip_data = TooltipData {
+        nearest_x: nearest_data_x,
+        nearest_y: nearest_y_values,
+        state: state.clone(),
     };
 
-    let series_tr = {
-        let state = state.clone();
-        move |(series, y_value): (UseY, String)| {
-            let state = state.clone();
-            // Center Y values when snippets are hidden (single column looks better centered)
-            let text_align = move || if show_y_snippets.get() { "right" } else { "center" };
-            view! {
-                <tr>
-                    <Show when=move || show_y_snippets.get()>
-                        <td><Snippet series=series.clone() state=state.clone() /></td>
-                    </Show>
-                    <td
-                        style="white-space: pre; font-family: monospace;"
-                        style:text-align=text_align
-                        style:padding-top=move || format!("{}px", font_height.get() / 4.0)
-                        style:padding-left=move || format!("{}px", font_width.get())
-                        inner_html=y_value>
-                    </td>
-                </tr>
-            }
-            .into_any()
-        }
-    };
+    // Store non-Copy values for use inside <Show> children (needs Fn, not FnOnce)
+    let format_y_value = StoredValue::new(format_y_value);
+    let tooltip_data = StoredValue::new(tooltip_data);
+    let state_stored = StoredValue::new(state.clone());
 
     view! {
         <Show when=move || state.hover_inner.get() && placement.get() != TooltipPlacement::Hide>
@@ -347,23 +397,80 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
                 style:top=move || format!("calc({}px)", state.mouse_page.get().1)
                 style:right=move || format!("calc(100% - {}px + {}px)", state.mouse_page.get().0, cursor_distance.get())
                 style:padding=move || padding.get().to_css_style()>
-                <h2
-                    style="margin: 0; text-align: center;"
-                    style:font-size=move || format!("{}px", font_height.get())>
-                    {x_body}
-                </h2>
-                <table
-                    style="border-collapse: collapse; border-spacing: 0; padding: 0;"
-                    style:margin=move || if show_y_snippets.get() { "0 0 0 auto" } else { "0 auto" }
-                    style:font-size=move || format!("{}px", font_height.get())>
-                    <tbody>
-                        <For
-                            each=nearest_data_y
-                            key=|(series, y_value)| (series.id, y_value.to_owned())
-                            children=series_tr.clone()
-                        />
-                    </tbody>
-                </table>
+                {move || {
+                    if let Some(body) = body {
+                        (body.get())(tooltip_data.get_value())
+                    } else {
+                        // X header: custom or default
+                        let x_header_view: AnyView = if let Some(x_header_fn) = x_header {
+                            (x_header_fn.get())(nearest_data_x)
+                        } else {
+                            view! {
+                                <h2
+                                    style="margin: 0; text-align: center;"
+                                    style:font-size=move || format!("{}px", font_height.get())>
+                                    {move || x_body.get()}
+                                </h2>
+                            }
+                            .into_any()
+                        };
+
+                        // Y rows with formatted values
+                        let fmt = format_y_value.get_value();
+                        let nearest_data_y = move || {
+                            nearest_y_values
+                                .get()
+                                .into_iter()
+                                .map(|(line, y_value)| {
+                                    let formatted = fmt(line.axis, y_value.clone());
+                                    (line, y_value, formatted)
+                                })
+                                .collect::<Vec<_>>()
+                        };
+
+                        let state_for_rows = state_stored.get_value();
+                        let series_tr = move |(series, y_value, formatted): (UseY, Option<Y>, String)| {
+                            if let Some(ref y_row_fn) = y_row {
+                                (y_row_fn.get())(series, y_value, formatted)
+                            } else {
+                                let state = state_for_rows.clone();
+                                let text_align = move || if show_y_snippets.get() { "right" } else { "center" };
+                                view! {
+                                    <tr>
+                                        <Show when=move || show_y_snippets.get()>
+                                            <td><Snippet series=series.clone() state=state.clone() /></td>
+                                        </Show>
+                                        <td
+                                            style="white-space: pre; font-family: monospace;"
+                                            style:text-align=text_align
+                                            style:padding-top=move || format!("{}px", font_height.get() / 4.0)
+                                            style:padding-left=move || format!("{}px", font_width.get())>
+                                            {formatted}
+                                        </td>
+                                    </tr>
+                                }
+                                .into_any()
+                            }
+                        };
+
+                        view! {
+                            {x_header_view}
+                            <table
+                                style="border-collapse: collapse; border-spacing: 0; padding: 0;"
+                                style:margin=move || if show_y_snippets.get() { "0 0 0 auto" } else { "0 auto" }
+                                style:font-size=move || format!("{}px", font_height.get())>
+                                <tbody>
+                                    <For
+                                        each=nearest_data_y
+                                        key=|(series, _, formatted)| (series.id, formatted.to_owned())
+                                        children=series_tr
+                                    />
+                                </tbody>
+                            </table>
+                        }
+                        .into_any()
+                    }
+                }}
             </aside>
         </Show>
     }.into_any()

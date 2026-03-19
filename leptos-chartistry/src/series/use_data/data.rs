@@ -89,13 +89,6 @@ impl<X: Tick, Y: Tick> Data<X, Y> {
     }
 
     /// Returns the Y range for the primary (left) axis.
-    /// This is an alias for `range_y_primary` for backward compatibility.
-    #[allow(dead_code)]
-    pub fn range_y(&self) -> Range<Y> {
-        self.range_y_primary.clone()
-    }
-
-    /// Returns the Y range for the primary (left) axis.
     pub fn range_y_primary(&self) -> Range<Y> {
         self.range_y_primary.clone()
     }
@@ -275,10 +268,4 @@ mod tests {
         assert_eq!(data.nearest_position_x(4.0), Some(4.0));
     }
 
-    #[test]
-    fn test_range_y_alias() {
-        // range_y should be an alias for range_y_primary
-        let data = test_data(DATA);
-        assert_eq!(data.range_y(), data.range_y_primary());
-    }
 }

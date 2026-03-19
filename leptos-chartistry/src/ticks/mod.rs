@@ -2,10 +2,10 @@ mod gen;
 
 pub use gen::{
     AlignedFloats, AlignedIntegers, Format as TickFormat, GeneratedTicks, Generator as TickGen,
-    HorizontalSpan, Period, TickFormatFn, Timestamps, VerticalSpan,
+    HorizontalSpan, Span as TickSpan, TickFormatFn, VerticalSpan,
 };
-
-use chrono::prelude::*;
+#[cfg(feature = "timestamps")]
+pub use gen::{Period, Timestamps};
 
 mod private {
     pub trait Sealed {}
@@ -26,7 +26,8 @@ pub trait Tick: Clone + PartialEq + PartialOrd + Send + Sync + 'static + private
 }
 
 impl private::Sealed for f64 {}
-impl<Tz: TimeZone> private::Sealed for DateTime<Tz> {}
+#[cfg(feature = "timestamps")]
+impl<Tz: chrono::TimeZone> private::Sealed for chrono::DateTime<Tz> {}
 
 impl Tick for f64 {
     fn tick_label_generator() -> impl TickGen<Tick = Self> {
@@ -38,9 +39,10 @@ impl Tick for f64 {
     }
 }
 
-impl<Tz> Tick for DateTime<Tz>
+#[cfg(feature = "timestamps")]
+impl<Tz> Tick for chrono::DateTime<Tz>
 where
-    Tz: TimeZone + Send + Sync + 'static,
+    Tz: chrono::TimeZone + Send + Sync + 'static,
     Tz::Offset: std::fmt::Display + Send + Sync,
 {
     fn tick_label_generator() -> impl TickGen<Tick = Self> {

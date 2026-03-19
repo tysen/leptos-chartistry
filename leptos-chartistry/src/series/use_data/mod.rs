@@ -21,10 +21,6 @@ pub struct UseData<X: Tick, Y: Tick> {
     pub includes_bars: Memo<bool>,
     pub range_x: Memo<Range<X>>,
     /// Y range for the primary (left) axis.
-    /// This is an alias for `range_y_primary` for backward compatibility.
-    #[allow(dead_code)]
-    pub range_y: Memo<Range<Y>>,
-    /// Y range for the primary (left) axis (alias for range_y).
     pub range_y_primary: Memo<Range<Y>>,
     /// Y range for the secondary (right) axis.
     pub range_y_secondary: Memo<Range<Y>>,
@@ -100,7 +96,6 @@ impl<X: Tick, Y: Tick> UseData<X, Y> {
             series,
             includes_bars,
             range_x,
-            range_y: range_y_primary,
             range_y_primary,
             range_y_secondary,
         }

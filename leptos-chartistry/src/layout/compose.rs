@@ -1,8 +1,9 @@
-use super::{EdgeLayout, UseLayout};
+use super::{AxisEdges, EdgeLayout, UseLayout};
 use crate::{
     aspect_ratio::KnownAspectRatio,
     bounds::Bounds,
     edge::Edge,
+    orientation::Orientation,
     series::YAxis,
     state::{PreState, State},
     Tick,
@@ -18,7 +19,12 @@ pub struct Layout {
     pub bottom: Vec<Memo<Bounds>>,
     pub left: Vec<Memo<Bounds>>,
     pub inner: Memo<Bounds>,
+    /// Width per X data point (horizontal spacing, meaningful when X is horizontal).
     pub x_width: Memo<f64>,
+    /// Height per X data point (vertical spacing, meaningful when X is vertical).
+    pub y_height: Memo<f64>,
+    /// The orientation of the chart.
+    pub orientation: Orientation,
 }
 
 #[derive(Clone)]
@@ -35,144 +41,292 @@ impl DeferredRender {
 }
 
 impl Layout {
-    /// Composes a layout giving bounds to edges and invididual components.
-    ///
-    /// Note:
-    /// Horizontal (top, bottom, x-axis) options have a fixed height (not dependent on the bounds of other elements) that constrains the layout.
-    /// Vertical (left, right, y-axis) options have a variable width and are generated at layout time having been constrained by the horizontal options.
-    ///
-    /// This function is long but procedural. General process:
-    ///  - Constrain the layout using fixed height from top / bottom edges.
-    ///  - Calculate the inner height.
-    ///  - Process the left / right components using inner height.
-    ///  - Calculate the inner width.
-    ///  - Process top / bottom components using inner width.
-    ///  - Calculate the bounds: outer, inner, edges, edge components. Adhere to aspect ratio.
-    ///  - Return state (Layout) and a deferred renderer (ComposedLayout).
-    ///
+    /// Composes a layout from semantic axis edges, mapping them to physical edges based on orientation.
     pub fn compose<X: Tick, Y: Tick>(
-        top: &[EdgeLayout<X>],
-        right: &[EdgeLayout<Y>],
-        bottom: &[EdgeLayout<X>],
-        left: &[EdgeLayout<Y>],
+        x_axis: &AxisEdges<X>,
+        y_axis: &AxisEdges<Y>,
         aspect_ratio: Memo<KnownAspectRatio>,
         state: &PreState<X, Y>,
+        orientation: Orientation,
     ) -> (Layout, Vec<DeferredRender>) {
-        // Horizontal options
-        let top_heights = collect_heights(top, state);
-        let top_height = sum_sizes(top_heights.clone());
-        let bottom_heights = collect_heights(bottom, state);
-        let bottom_height = sum_sizes(bottom_heights.clone());
-        let inner_height =
-            KnownAspectRatio::inner_height_signal(aspect_ratio, top_height, bottom_height);
-
-        // Vertical options - left uses primary axis, right uses secondary axis
-        let (left_widths, left) = use_vertical(left, state, inner_height, YAxis::Primary);
-        let left_width = sum_sizes(left_widths.clone());
-        let (right_widths, right) = use_vertical(right, state, inner_height, YAxis::Secondary);
-        let right_width = sum_sizes(right_widths.clone());
-        let avail_width =
-            KnownAspectRatio::inner_width_signal(aspect_ratio, left_width, right_width);
-
-        // Bounds
-        let outer = Memo::new(move |_| {
-            Bounds::new(
-                left_width.get() + avail_width.get() + right_width.get(),
-                top_height.get() + inner_height.get() + bottom_height.get(),
-            )
-        });
-        let inner = Memo::new(move |_| {
-            outer.get().shrink(
-                top_height.get(),
-                right_width.get(),
-                bottom_height.get(),
-                left_width.get(),
-            )
-        });
-
-        // Edge bounds
-        let top_bounds = Memo::new(move |_| {
-            let i = inner.get();
-            Bounds::from_points(i.left_x(), outer.get().top_y(), i.right_x(), i.top_y())
-        });
-        let right_bounds = Memo::new(move |_| {
-            let i = inner.get();
-            Bounds::from_points(i.right_x(), i.top_y(), outer.get().right_x(), i.bottom_y())
-        });
-        let bottom_bounds = Memo::new(move |_| {
-            let i = inner.get();
-            let bottom_y = outer.get().bottom_y();
-            Bounds::from_points(i.left_x(), i.bottom_y(), i.right_x(), bottom_y)
-        });
-        let left_bounds = Memo::new(move |_| {
-            let i = inner.get();
-            Bounds::from_points(outer.get().left_x(), i.top_y(), i.left_x(), i.bottom_y())
-        });
-
-        // Find the width of each X
-        let data_len = state.data.len;
-        let x_width = Memo::new(move |_| inner.get().width() / data_len.get() as f64);
-
-        // State signals
-        let layout = Layout {
-            outer,
-            top: option_bounds(Edge::Top, top_bounds, top_heights),
-            right: option_bounds(Edge::Right, right_bounds, right_widths),
-            bottom: option_bounds(Edge::Bottom, bottom_bounds, bottom_heights),
-            left: option_bounds(Edge::Left, left_bounds, left_widths),
-            inner,
-            x_width,
-        };
-
-        let vertical = |edge, bounds: &[Memo<Bounds>], items: Vec<_>| {
-            items
-                .into_iter()
-                .enumerate()
-                .map(move |(index, opt)| (edge, bounds[index], opt))
-                .collect::<Vec<_>>()
-        };
-        let horizontal = |edge: Edge, bounds: &[Memo<Bounds>], items: &[EdgeLayout<X>]| {
-            items
-                .iter()
-                .enumerate()
-                .map(|(index, opt)| {
-                    (
-                        edge,
-                        bounds[index],
-                        opt.to_horizontal_use(state, avail_width),
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-
-        // Chain edges together for a deferred render
-        let deferred = vertical(Edge::Left, &layout.left, left)
-            .into_iter()
-            .chain(vertical(Edge::Right, &layout.right, right))
-            .chain(horizontal(Edge::Top, &layout.top, top))
-            .chain(horizontal(Edge::Bottom, &layout.bottom, bottom))
-            .map(|(edge, bounds, layout)| DeferredRender {
-                edge,
-                bounds,
-                layout,
-            })
-            .collect::<Vec<_>>();
-
-        (layout, deferred)
+        if orientation.x_is_horizontal() {
+            // X on horizontal edges (top/bottom), Y on vertical edges (left/right)
+            compose_x_horizontal(x_axis, y_axis, aspect_ratio, state, orientation)
+        } else {
+            // X on vertical edges (left/right), Y on horizontal edges (top/bottom)
+            compose_x_vertical(x_axis, y_axis, aspect_ratio, state, orientation)
+        }
     }
 }
 
-fn collect_heights<X: Tick, Y: Tick>(
-    items: &[EdgeLayout<X>],
+/// Normal orientation: X data on top/bottom, Y data on left/right.
+fn compose_x_horizontal<X: Tick, Y: Tick>(
+    x_axis: &AxisEdges<X>,
+    y_axis: &AxisEdges<Y>,
+    aspect_ratio: Memo<KnownAspectRatio>,
     state: &PreState<X, Y>,
-) -> Vec<Signal<f64>> {
-    items
-        .iter()
-        .map(|c| c.fixed_height(state))
-        .collect::<Vec<_>>()
+    orientation: Orientation,
+) -> (Layout, Vec<DeferredRender>) {
+    // Physical edges: top=x_axis.start, bottom=x_axis.end, left=y_axis.start, right=y_axis.end
+    let top = &x_axis.start;
+    let bottom = &x_axis.end;
+    let left = &y_axis.start;
+    let right = &y_axis.end;
+
+    // Horizontal edges have fixed heights
+    let top_heights = collect_heights(top, state);
+    let top_height = sum_sizes(top_heights.clone());
+    let bottom_heights = collect_heights(bottom, state);
+    let bottom_height = sum_sizes(bottom_heights.clone());
+    let inner_height =
+        KnownAspectRatio::inner_height_signal(aspect_ratio, top_height, bottom_height);
+
+    // Vertical edges have variable widths
+    let (left_widths, left_layouts) = use_vertical_y(left, state, inner_height, YAxis::Primary);
+    let left_width = sum_sizes(left_widths.clone());
+    let (right_widths, right_layouts) =
+        use_vertical_y(right, state, inner_height, YAxis::Secondary);
+    let right_width = sum_sizes(right_widths.clone());
+    let avail_width =
+        KnownAspectRatio::inner_width_signal(aspect_ratio, left_width, right_width);
+
+    let (layout, mut deferred) = build_layout(
+        aspect_ratio,
+        state,
+        orientation,
+        top_heights,
+        top_height,
+        bottom_heights,
+        bottom_height,
+        left_widths,
+        left_width,
+        right_widths,
+        right_width,
+        inner_height,
+        avail_width,
+    );
+
+    // Build deferred renders
+    let left_renders = vertical_renders(Edge::Left, &layout.left, left_layouts);
+    let right_renders = vertical_renders(Edge::Right, &layout.right, right_layouts);
+    let top_renders = horizontal_x_renders(Edge::Top, &layout.top, top, state, avail_width);
+    let bottom_renders =
+        horizontal_x_renders(Edge::Bottom, &layout.bottom, bottom, state, avail_width);
+
+    deferred.extend(left_renders);
+    deferred.extend(right_renders);
+    deferred.extend(top_renders);
+    deferred.extend(bottom_renders);
+
+    (layout, deferred)
 }
 
-fn use_vertical<X: Tick, Y: Tick>(
+/// Rotated orientation: Y data on top/bottom, X data on left/right.
+fn compose_x_vertical<X: Tick, Y: Tick>(
+    x_axis: &AxisEdges<X>,
+    y_axis: &AxisEdges<Y>,
+    aspect_ratio: Memo<KnownAspectRatio>,
+    state: &PreState<X, Y>,
+    orientation: Orientation,
+) -> (Layout, Vec<DeferredRender>) {
+    // Physical edges: top=y_axis.start, bottom=y_axis.end, left=x_axis.start, right=x_axis.end
+    let top = &y_axis.start;
+    let bottom = &y_axis.end;
+    let left = &x_axis.start;
+    let right = &x_axis.end;
+
+    // Horizontal edges (Y data) have fixed heights
+    let top_heights = collect_heights(top, state);
+    let top_height = sum_sizes(top_heights.clone());
+    let bottom_heights = collect_heights(bottom, state);
+    let bottom_height = sum_sizes(bottom_heights.clone());
+    let inner_height =
+        KnownAspectRatio::inner_height_signal(aspect_ratio, top_height, bottom_height);
+
+    // Vertical edges (X data) have variable widths
+    let (left_widths, left_layouts) = use_vertical_x(left, state, inner_height);
+    let left_width = sum_sizes(left_widths.clone());
+    let (right_widths, right_layouts) = use_vertical_x(right, state, inner_height);
+    let right_width = sum_sizes(right_widths.clone());
+    let avail_width =
+        KnownAspectRatio::inner_width_signal(aspect_ratio, left_width, right_width);
+
+    let (layout, mut deferred) = build_layout(
+        aspect_ratio,
+        state,
+        orientation,
+        top_heights,
+        top_height,
+        bottom_heights,
+        bottom_height,
+        left_widths,
+        left_width,
+        right_widths,
+        right_width,
+        inner_height,
+        avail_width,
+    );
+
+    // Build deferred renders
+    let left_renders = vertical_renders(Edge::Left, &layout.left, left_layouts);
+    let right_renders = vertical_renders(Edge::Right, &layout.right, right_layouts);
+    let top_renders =
+        horizontal_y_renders(Edge::Top, &layout.top, top, state, avail_width, YAxis::Primary);
+    let bottom_renders = horizontal_y_renders(
+        Edge::Bottom,
+        &layout.bottom,
+        bottom,
+        state,
+        avail_width,
+        YAxis::Secondary,
+    );
+
+    deferred.extend(left_renders);
+    deferred.extend(right_renders);
+    deferred.extend(top_renders);
+    deferred.extend(bottom_renders);
+
+    (layout, deferred)
+}
+
+/// Build the Layout struct and bounds (shared between both orientation paths).
+#[allow(clippy::too_many_arguments)]
+fn build_layout<X: Tick, Y: Tick>(
+    _aspect_ratio: Memo<KnownAspectRatio>,
+    state: &PreState<X, Y>,
+    orientation: Orientation,
+    top_heights: Vec<Signal<f64>>,
+    top_height: Memo<f64>,
+    bottom_heights: Vec<Signal<f64>>,
+    bottom_height: Memo<f64>,
+    left_widths: Vec<Signal<f64>>,
+    left_width: Memo<f64>,
+    right_widths: Vec<Signal<f64>>,
+    right_width: Memo<f64>,
+    inner_height: Memo<f64>,
+    avail_width: Memo<f64>,
+) -> (Layout, Vec<DeferredRender>) {
+    // Bounds
+    let outer = Memo::new(move |_| {
+        Bounds::new(
+            left_width.get() + avail_width.get() + right_width.get(),
+            top_height.get() + inner_height.get() + bottom_height.get(),
+        )
+    });
+    let inner = Memo::new(move |_| {
+        outer.get().shrink(
+            top_height.get(),
+            right_width.get(),
+            bottom_height.get(),
+            left_width.get(),
+        )
+    });
+
+    // Edge bounds
+    let top_bounds = Memo::new(move |_| {
+        let i = inner.get();
+        Bounds::from_points(i.left_x(), outer.get().top_y(), i.right_x(), i.top_y())
+    });
+    let right_bounds = Memo::new(move |_| {
+        let i = inner.get();
+        Bounds::from_points(i.right_x(), i.top_y(), outer.get().right_x(), i.bottom_y())
+    });
+    let bottom_bounds = Memo::new(move |_| {
+        let i = inner.get();
+        let bottom_y = outer.get().bottom_y();
+        Bounds::from_points(i.left_x(), i.bottom_y(), i.right_x(), bottom_y)
+    });
+    let left_bounds = Memo::new(move |_| {
+        let i = inner.get();
+        Bounds::from_points(outer.get().left_x(), i.top_y(), i.left_x(), i.bottom_y())
+    });
+
+    // Size per data point along each axis direction.
+    // X runs along SVG width when horizontal, SVG height when vertical.
+    let data_len = state.data.len;
+    let x_width = Memo::new(move |_| {
+        let size = if orientation.x_is_horizontal() {
+            inner.get().width()
+        } else {
+            inner.get().height()
+        };
+        size / data_len.get() as f64
+    });
+    let y_height = Memo::new(move |_| {
+        let size = if orientation.x_is_horizontal() {
+            inner.get().height()
+        } else {
+            inner.get().width()
+        };
+        size / data_len.get() as f64
+    });
+
+    let layout = Layout {
+        outer,
+        top: option_bounds(Edge::Top, top_bounds, top_heights),
+        right: option_bounds(Edge::Right, right_bounds, right_widths),
+        bottom: option_bounds(Edge::Bottom, bottom_bounds, bottom_heights),
+        left: option_bounds(Edge::Left, left_bounds, left_widths),
+        inner,
+        x_width,
+        y_height,
+        orientation,
+    };
+
+    (layout, Vec::new())
+}
+
+fn collect_heights<XY: Tick, X: Tick, Y: Tick>(
+    items: &[EdgeLayout<XY>],
+    state: &PreState<X, Y>,
+) -> Vec<Signal<f64>> {
+    items.iter().map(|c| c.fixed_height(state)).collect()
+}
+
+// --- Helper functions for X-axis data on horizontal edges ---
+
+fn horizontal_x_renders<X: Tick, Y: Tick>(
+    edge: Edge,
+    bounds: &[Memo<Bounds>],
+    items: &[EdgeLayout<X>],
+    state: &PreState<X, Y>,
+    avail_width: Memo<f64>,
+) -> Vec<DeferredRender> {
+    items
+        .iter()
+        .enumerate()
+        .map(|(index, opt)| DeferredRender {
+            edge,
+            bounds: bounds[index],
+            layout: opt.to_horizontal_use_x(state, avail_width),
+        })
+        .collect()
+}
+
+// --- Helper functions for Y-axis data on horizontal edges ---
+
+fn horizontal_y_renders<X: Tick, Y: Tick>(
+    edge: Edge,
+    bounds: &[Memo<Bounds>],
+    items: &[EdgeLayout<Y>],
+    state: &PreState<X, Y>,
+    avail_width: Memo<f64>,
+    axis: YAxis,
+) -> Vec<DeferredRender> {
+    items
+        .iter()
+        .enumerate()
+        .map(|(index, opt)| DeferredRender {
+            edge,
+            bounds: bounds[index],
+            layout: opt.to_horizontal_use_y(state, avail_width, axis),
+        })
+        .collect()
+}
+
+// --- Helper functions for Y-axis data on vertical edges ---
+
+fn use_vertical_y<X: Tick, Y: Tick>(
     items: &[EdgeLayout<Y>],
     state: &PreState<X, Y>,
     avail_height: Memo<f64>,
@@ -181,10 +335,44 @@ fn use_vertical<X: Tick, Y: Tick>(
     items
         .iter()
         .map(|c| {
-            let vert = c.to_vertical_use(state, avail_height, axis);
+            let vert = c.to_vertical_use_y(state, avail_height, axis);
             (vert.width, vert.layout)
         })
         .unzip()
+}
+
+// --- Helper functions for X-axis data on vertical edges ---
+
+fn use_vertical_x<X: Tick, Y: Tick>(
+    items: &[EdgeLayout<X>],
+    state: &PreState<X, Y>,
+    avail_height: Memo<f64>,
+) -> (Vec<Signal<f64>>, Vec<UseLayout>) {
+    items
+        .iter()
+        .map(|c| {
+            let vert = c.to_vertical_use_x(state, avail_height);
+            (vert.width, vert.layout)
+        })
+        .unzip()
+}
+
+// --- Shared helpers ---
+
+fn vertical_renders(
+    edge: Edge,
+    bounds: &[Memo<Bounds>],
+    layouts: Vec<UseLayout>,
+) -> Vec<DeferredRender> {
+    layouts
+        .into_iter()
+        .enumerate()
+        .map(|(index, layout)| DeferredRender {
+            edge,
+            bounds: bounds[index],
+            layout,
+        })
+        .collect()
 }
 
 fn sum_sizes(sizes: Vec<Signal<f64>>) -> Memo<f64> {

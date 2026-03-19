@@ -54,9 +54,11 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
                 data=data
 
                 // Decorate our chart
-                top=RotatedLabel::middle("Applying a theme")
-                left=TickLabels::aligned_floats()
-                bottom=Legend::end()
+                x_axis=AxisEdges::new()
+                    .start(RotatedLabel::middle("Applying a theme"))
+                    .end(Legend::end())
+                y_axis=AxisEdges::new()
+                    .start(TickLabels::aligned_floats())
                 inner=[
                     XGridLine::default().into_inner(),
                     // We can also use the `with_colour` method on some elements

@@ -15,12 +15,14 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
             series=series
             data=data
 
-            top=RotatedLabel::middle("Your chart title")
-            left=TickLabels::aligned_floats()
-            bottom=vec![
-                TickLabels::aligned_floats().into_edge(),
-                Legend::end().into_edge()
-            ]
+            x_axis=AxisEdges::new()
+                .start(RotatedLabel::middle("Your chart title"))
+                .end(vec![
+                    TickLabels::aligned_floats().into_edge(),
+                    Legend::end().into_edge()
+                ])
+            y_axis=AxisEdges::new()
+                .start(TickLabels::aligned_floats())
         />
     }
 }

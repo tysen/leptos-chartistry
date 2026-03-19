@@ -13,12 +13,14 @@ keywords = [ "leptos", "wasm", "charts" ]
 categories = [ "graphics", "gui", "wasm", "web-programming" ]
 
 [dependencies]
-chrono = "0.4"
+chrono = { version = "0.4", optional = true }
 leptos = "0.8"
 leptos-use = "0.18"
 log = "0.4"
 web-sys = { version = "0.3", features = ["DomRectReadOnly"] }
 
 [features]
+default = ["timestamps"]
+timestamps = ["dep:chrono"]
 ssr = ["leptos/ssr", "leptos-use/ssr"]
  

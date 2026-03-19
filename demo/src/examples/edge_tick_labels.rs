@@ -14,9 +14,11 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
             series=series
             data=data
             // Tick labels usually have a named constructor that covers the tick type
-            left=TickLabels::aligned_floats()
+            y_axis=AxisEdges::new()
+                .start(TickLabels::aligned_floats())
             // There is also a default constructor
-            bottom=TickLabels::default()
+            x_axis=AxisEdges::new()
+                .end(TickLabels::default())
         />
     }
 }

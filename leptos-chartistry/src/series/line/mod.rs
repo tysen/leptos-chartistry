@@ -5,6 +5,7 @@ pub use marker::{Marker, MarkerShape};
 
 use super::{ApplyUseSeries, IntoUseLine, SeriesAcc, UseData, UseY, YAxis};
 use crate::{
+    bounds::Bounds,
     colours::{Colour, DivergingGradient, LinearGradientSvg, SequentialGradient, BERLIN, LIPARI},
     series::GetYValue,
     ColourScheme, Tick,
@@ -69,6 +70,10 @@ pub struct Line<T, Y> {
     pub interpolation: RwSignal<Interpolation>,
     /// Marker at each point on the line.
     pub marker: Marker,
+    /// Fill colour for the region above the line (higher Y values).
+    pub fill_above: RwSignal<Option<Colour>>,
+    /// Fill colour for the region below the line (lower Y values).
+    pub fill_below: RwSignal<Option<Colour>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -78,6 +83,8 @@ pub struct UseLine {
     width: RwSignal<f64>,
     interpolation: RwSignal<Interpolation>,
     marker: Marker,
+    fill_above: RwSignal<Option<Colour>>,
+    fill_below: RwSignal<Option<Colour>>,
 }
 
 impl<T, Y> Line<T, Y> {
@@ -97,6 +104,8 @@ impl<T, Y> Line<T, Y> {
             width: RwSignal::new(1.0),
             interpolation: RwSignal::default(),
             marker: Marker::default(),
+            fill_above: RwSignal::default(),
+            fill_below: RwSignal::default(),
         }
     }
 
@@ -145,6 +154,18 @@ impl<T, Y> Line<T, Y> {
         self.marker = marker.into();
         self
     }
+
+    /// Set the fill colour for the region above the line (higher Y values).
+    pub fn with_fill_above(self, colour: impl Into<Colour>) -> Self {
+        self.fill_above.set(Some(colour.into()));
+        self
+    }
+
+    /// Set the fill colour for the region below the line (lower Y values).
+    pub fn with_fill_below(self, colour: impl Into<Colour>) -> Self {
+        self.fill_below.set(Some(colour.into()));
+        self
+    }
 }
 
 impl<T, Y> Clone for Line<T, Y> {
@@ -158,6 +179,8 @@ impl<T, Y> Clone for Line<T, Y> {
             width: self.width,
             interpolation: self.interpolation,
             marker: self.marker.clone(),
+            fill_above: self.fill_above,
+            fill_below: self.fill_below,
         }
     }
 }
@@ -206,6 +229,8 @@ impl<T, Y> IntoUseLine<T, Y> for Line<T, Y> {
                 width: self.width,
                 interpolation: self.interpolation,
                 marker: self.marker.clone(),
+                fill_above: self.fill_above,
+                fill_below: self.fill_below,
             },
         );
         (line, self.get_y.clone())
@@ -219,8 +244,12 @@ pub fn RenderLine<X: Tick, Y: Tick>(
     data: UseData<X, Y>,
     positions: Signal<Vec<(f64, f64)>>,
     markers: Signal<Vec<(f64, f64)>>,
+    x_is_horizontal: bool,
+    #[prop(optional)] inner_bounds: Option<Memo<Bounds>>,
 ) -> impl IntoView {
-    let path = move || positions.with(|positions| line.interpolation.get().path(positions));
+    let path = move || {
+        positions.with(|positions| line.interpolation.get().path(positions, x_is_horizontal))
+    };
 
     // Line colour
     let gradient_id = format!("line_{}_gradient", use_y.id);
@@ -251,6 +280,31 @@ pub fn RenderLine<X: Tick, Y: Tick>(
         range.read().positions()
     });
 
+    // Area fill via clipPath
+    let clip_above_id = format!("line_{}_clip_above", use_y.id);
+    let clip_below_id = format!("line_{}_clip_below", use_y.id);
+    let clip_above_url = format!("url(#{})", clip_above_id);
+    let clip_below_url = format!("url(#{})", clip_below_id);
+
+    // Build clip polygon paths from the line path + chart edge corners
+    let clip_above_path = move || {
+        let bounds = inner_bounds.map(|b| b.get());
+        let Some(bounds) = bounds else { return String::new(); };
+        positions.with(|positions| {
+            build_clip_path(positions, &bounds, x_is_horizontal, true, line.interpolation.get())
+        })
+    };
+    let clip_below_path = move || {
+        let bounds = inner_bounds.map(|b| b.get());
+        let Some(bounds) = bounds else { return String::new(); };
+        positions.with(|positions| {
+            build_clip_path(positions, &bounds, x_is_horizontal, false, line.interpolation.get())
+        })
+    };
+
+    let fill_above = line.fill_above;
+    let fill_below = line.fill_below;
+
     let width = line.width;
     view! {
         <g
@@ -266,10 +320,108 @@ pub fn RenderLine<X: Tick, Y: Tick>(
                         scheme=gradient
                         range_y=range_y />
                 </Show>
+                <Show when=move || fill_above.get().is_some()>
+                    <clipPath id=clip_above_id.clone()>
+                        <path d=clip_above_path />
+                    </clipPath>
+                </Show>
+                <Show when=move || fill_below.get().is_some()>
+                    <clipPath id=clip_below_id.clone()>
+                        <path d=clip_below_path />
+                    </clipPath>
+                </Show>
             </defs>
+            <Show when=move || fill_above.get().is_some()>
+                {
+                    let bounds = inner_bounds;
+                    let clip_url = clip_above_url.clone();
+                    move || bounds.map(|b| {
+                        let b = b.get();
+                        view! {
+                            <rect
+                                clip-path=clip_url.clone()
+                                x=b.left_x()
+                                y=b.top_y()
+                                width=b.width()
+                                height=b.height()
+                                fill=move || fill_above.get().map(|c| c.to_string()).unwrap_or_default()
+                                stroke="none" />
+                        }
+                    })
+                }
+            </Show>
+            <Show when=move || fill_below.get().is_some()>
+                {
+                    let bounds = inner_bounds;
+                    let clip_url = clip_below_url.clone();
+                    move || bounds.map(|b| {
+                        let b = b.get();
+                        view! {
+                            <rect
+                                clip-path=clip_url.clone()
+                                x=b.left_x()
+                                y=b.top_y()
+                                width=b.width()
+                                height=b.height()
+                                fill=move || fill_below.get().map(|c| c.to_string()).unwrap_or_default()
+                                stroke="none" />
+                        }
+                    })
+                }
+            </Show>
             <path d=path fill="none" />
             <marker::LineMarkers line=line positions=markers />
         </g>
     }
     .into_any()
+}
+
+/// Build a closed polygon path for clipping.
+/// `above`: true for the region above the line (higher Y data values), false for below.
+fn build_clip_path(
+    positions: &[(f64, f64)],
+    bounds: &Bounds,
+    x_is_horizontal: bool,
+    above: bool,
+    interpolation: Interpolation,
+) -> String {
+    // Filter out NaN positions
+    let valid: Vec<(f64, f64)> = positions
+        .iter()
+        .copied()
+        .filter(|(x, y)| !x.is_nan() && !y.is_nan())
+        .collect();
+    if valid.is_empty() {
+        return String::new();
+    }
+
+    let line_path = interpolation.path(&valid, x_is_horizontal);
+    // Replace leading "M" with "L" so the line path continues from our polygon start
+    let line_as_lineto = format!("L{}", &line_path[1..]);
+
+    let first = valid.first().unwrap();
+    let last = valid.last().unwrap();
+
+    // Build corner points that extend from the first/last line points perpendicular
+    // to the data direction, toward the fill edge. The start_corner is at the same
+    // chart edge as the first point, and end_corner at the same edge as the last point.
+    // This avoids diagonal lines that would cross the data line.
+    let (start_corner, end_corner) = if x_is_horizontal {
+        // X is horizontal: first/last differ in SVG x, fill edge is top or bottom
+        let edge_y = if above { bounds.top_y() } else { bounds.bottom_y() };
+        (
+            format!("{},{}", first.0, edge_y),
+            format!("{},{}", last.0, edge_y),
+        )
+    } else {
+        // X is vertical: first/last differ in SVG y, fill edge is right or left
+        let edge_x = if above { bounds.right_x() } else { bounds.left_x() };
+        (
+            format!("{},{}", edge_x, first.1),
+            format!("{},{}", edge_x, last.1),
+        )
+    };
+
+    // Polygon: start_corner → line path (as lineto) → end_corner → close
+    format!("M {start_corner} {line_as_lineto} L {end_corner} Z")
 }

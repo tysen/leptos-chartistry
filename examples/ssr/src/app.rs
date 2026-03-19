@@ -43,9 +43,11 @@ pub fn App() -> impl IntoView {
             series=series
             data=load_data()
 
-            top=RotatedLabel::middle("Hello, hydration!")
-            left=TickLabels::aligned_floats()
-            bottom=Legend::end()
+            x_axis=AxisEdges::new()
+                .start(RotatedLabel::middle("Hello, hydration!"))
+                .end(Legend::end())
+            y_axis=AxisEdges::new()
+                .start(TickLabels::aligned_floats())
             inner=[
                 AxisMarker::left_edge().into_inner(),
                 AxisMarker::bottom_edge().into_inner(),

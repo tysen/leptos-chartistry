@@ -15,10 +15,12 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
             series=series
             data=data
             // Show a legend, left-to-right, placed in the middle
-            top=Legend::start()
+            x_axis=AxisEdges::new()
+                .start(Legend::start())
+                .end(Legend::end())
             // Vertical legends are a top-to-bottom list, scrollable on overflow
-            right=Legend::middle()
-            bottom=Legend::end()
+            y_axis=AxisEdges::new()
+                .end(Legend::middle())
         />
     }
 }

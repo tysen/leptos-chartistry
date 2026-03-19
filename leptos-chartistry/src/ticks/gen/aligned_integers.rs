@@ -77,70 +77,105 @@ fn max_ticks_from_span<T: std::fmt::Display>(first: &T, last: &T, span: &dyn Spa
     (span.length() / consumed).max(2.0) as usize
 }
 
-/// Macro to implement Generator for signed integer types.
-macro_rules! impl_generator_signed {
+/// Type-specific operations for integer tick generation.
+trait IntegerTick: Copy + Ord + std::fmt::Display + Send + Sync + 'static {
+    /// Compute the unsigned range between two ordered values.
+    fn unsigned_range(lo: Self, hi: Self) -> u128;
+    /// Convert a u128 step size to Self. The value is guaranteed to fit within the data range.
+    fn from_u128(value: u128) -> Self;
+    /// Align `lo` down to the nearest multiple of `step`.
+    fn align_start(lo: Self, step: Self) -> Self;
+    /// Checked addition.
+    fn checked_add(self, step: Self) -> Option<Self>;
+}
+
+macro_rules! impl_integer_tick_signed {
     ($($t:ty),*) => {
         $(
-            impl Generator for AlignedIntegers<$t> {
-                type Tick = $t;
-
-                fn generate(
-                    &self,
-                    first: &Self::Tick,
-                    last: &Self::Tick,
-                    span: &dyn Span<Self::Tick>,
-                ) -> GeneratedTicks<Self::Tick> {
-                    let first = *first;
-                    let last = *last;
-
-                    // Handle zero range
-                    if first == last {
-                        return GeneratedTicks::new(IntegerFormat::new(), vec![first]);
-                    }
-
-                    // Ensure first <= last for calculation
-                    let (lo, hi) = if first <= last { (first, last) } else { (last, first) };
-                    let range = (hi as i128 - lo as i128).unsigned_abs();
-
-                    let max_ticks = max_ticks_from_span(&lo, &hi, span);
-                    let step = find_nice_step(range, max_ticks) as $t;
-
-                    // Align start to step boundary (round towards negative infinity)
-                    let start = if lo >= 0 {
+            impl IntegerTick for $t {
+                fn unsigned_range(lo: Self, hi: Self) -> u128 {
+                    (hi as i128 - lo as i128).unsigned_abs()
+                }
+                fn from_u128(value: u128) -> Self {
+                    value as $t
+                }
+                fn align_start(lo: Self, step: Self) -> Self {
+                    if lo >= 0 {
                         (lo / step) * step
                     } else {
                         ((lo - step + 1) / step) * step
-                    };
-
-                    // Generate ticks
-                    let mut ticks = Vec::default();
-                    let mut current = start;
-                    while current <= hi {
-                        if current >= lo {
-                            ticks.push(current);
-                        }
-                        // Prevent overflow
-                        if let Some(next) = current.checked_add(step) {
-                            current = next;
-                        } else {
-                            break;
-                        }
                     }
-
-                    // Ensure we have at least one tick
-                    if ticks.is_empty() {
-                        ticks.push(lo);
-                    }
-
-                    GeneratedTicks::new(IntegerFormat::new(), ticks)
+                }
+                fn checked_add(self, step: Self) -> Option<Self> {
+                    self.checked_add(step)
                 }
             }
         )*
     };
 }
 
-/// Macro to implement Generator for unsigned integer types.
-macro_rules! impl_generator_unsigned {
+macro_rules! impl_integer_tick_unsigned {
+    ($($t:ty),*) => {
+        $(
+            impl IntegerTick for $t {
+                fn unsigned_range(lo: Self, hi: Self) -> u128 {
+                    (hi - lo) as u128
+                }
+                fn from_u128(value: u128) -> Self {
+                    value as $t
+                }
+                fn align_start(lo: Self, step: Self) -> Self {
+                    (lo / step) * step
+                }
+                fn checked_add(self, step: Self) -> Option<Self> {
+                    self.checked_add(step)
+                }
+            }
+        )*
+    };
+}
+
+impl_integer_tick_signed!(i8, i16, i32, i64, i128, isize);
+impl_integer_tick_unsigned!(u8, u16, u32, u64, u128, usize);
+
+fn generate_ticks<T: IntegerTick>(first: T, last: T, span: &dyn Span<T>) -> GeneratedTicks<T> {
+    // Handle zero range
+    if first == last {
+        return GeneratedTicks::new(IntegerFormat::new(), vec![first]);
+    }
+
+    // Ensure first <= last for calculation
+    let (lo, hi) = if first <= last { (first, last) } else { (last, first) };
+    let range = T::unsigned_range(lo, hi);
+
+    let max_ticks = max_ticks_from_span(&lo, &hi, span);
+    let step = T::from_u128(find_nice_step(range, max_ticks));
+
+    let start = T::align_start(lo, step);
+
+    // Generate ticks
+    let mut ticks = Vec::default();
+    let mut current = start;
+    while current <= hi {
+        if current >= lo {
+            ticks.push(current);
+        }
+        if let Some(next) = current.checked_add(step) {
+            current = next;
+        } else {
+            break;
+        }
+    }
+
+    // Ensure we have at least one tick
+    if ticks.is_empty() {
+        ticks.push(lo);
+    }
+
+    GeneratedTicks::new(IntegerFormat::new(), ticks)
+}
+
+macro_rules! impl_generator {
     ($($t:ty),*) => {
         $(
             impl Generator for AlignedIntegers<$t> {
@@ -152,53 +187,14 @@ macro_rules! impl_generator_unsigned {
                     last: &Self::Tick,
                     span: &dyn Span<Self::Tick>,
                 ) -> GeneratedTicks<Self::Tick> {
-                    let first = *first;
-                    let last = *last;
-
-                    // Handle zero range
-                    if first == last {
-                        return GeneratedTicks::new(IntegerFormat::new(), vec![first]);
-                    }
-
-                    // Ensure first <= last for calculation
-                    let (lo, hi) = if first <= last { (first, last) } else { (last, first) };
-                    let range = (hi - lo) as u128;
-
-                    let max_ticks = max_ticks_from_span(&lo, &hi, span);
-                    let step = find_nice_step(range, max_ticks) as $t;
-
-                    // Align start to step boundary
-                    let start = (lo / step) * step;
-
-                    // Generate ticks
-                    let mut ticks = Vec::default();
-                    let mut current = start;
-                    while current <= hi {
-                        if current >= lo {
-                            ticks.push(current);
-                        }
-                        // Prevent overflow
-                        if let Some(next) = current.checked_add(step) {
-                            current = next;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    // Ensure we have at least one tick
-                    if ticks.is_empty() {
-                        ticks.push(lo);
-                    }
-
-                    GeneratedTicks::new(IntegerFormat::new(), ticks)
+                    generate_ticks(*first, *last, span)
                 }
             }
         )*
     };
 }
 
-impl_generator_signed!(i8, i16, i32, i64, i128, isize);
-impl_generator_unsigned!(u8, u16, u32, u64, u128, usize);
+impl_generator!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize);
 
 #[cfg(test)]
 mod tests {
