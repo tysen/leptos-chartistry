@@ -1,35 +1,35 @@
-use super::Colour;
+use super::Color;
 use leptos::prelude::*;
 
-/// A gradient of colours. Maps to a [ColourScheme]
-pub type SequentialGradient = (Colour, &'static [Colour]);
-/// A diverging gradient of colours i.e., a gradient that tends to a central value then a second gradient away. Maps to a [ColourScheme]. Use with [Line::with_gradient](crate::Line::with_gradient).
+/// A gradient of colors. Maps to a [ColorScheme]
+pub type SequentialGradient = (Color, &'static [Color]);
+/// A diverging gradient of colors i.e., a gradient that tends to a central value then a second gradient away. Maps to a [ColorScheme]. Use with [Line::with_gradient](crate::Line::with_gradient).
 pub type DivergingGradient = (SequentialGradient, SequentialGradient);
 
-/// A colour scheme with at least one colour.
+/// A color scheme with at least one color.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ColourScheme {
-    // Must have at least one colour
-    swatches: Vec<Colour>,
+pub struct ColorScheme {
+    // Must have at least one color
+    swatches: Vec<Color>,
     // Index of the zero value in a diverging gradient. If None, the zero value is not used.
-    // TODO: collect more colour scheme uses and convert schemes into an enum / trait
+    // TODO: collect more color scheme uses and convert schemes into an enum / trait
     zero: Option<usize>,
 }
 
-impl ColourScheme {
-    /// Create a new colour scheme with the given colours. Must have at least one colour.
-    pub fn new(first: Colour, rest: impl IntoIterator<Item = Colour>) -> Self {
+impl ColorScheme {
+    /// Create a new color scheme with the given colors. Must have at least one color.
+    pub fn new(first: Color, rest: impl IntoIterator<Item = Color>) -> Self {
         Self {
             swatches: std::iter::once(first).chain(rest).collect(),
             zero: None,
         }
     }
 
-    /// Creates a diverging colour scheme value from two sequential gradients. For use with [Line::with_gradient](crate::Line::with_gradient).
+    /// Creates a diverging color scheme value from two sequential gradients. For use with [Line::with_gradient](crate::Line::with_gradient).
     ///
-    /// A diverging colour scheme is useful for data that has a central value. For example, a temperature scale with a central value of 0°C. Assuming a light background the `before` scheme could then be blue to a black while `after` could be black to red.
+    /// A diverging color scheme is useful for data that has a central value. For example, a temperature scale with a central value of 0°C. Assuming a light background the `before` scheme could then be blue to a black while `after` could be black to red.
     ///
-    /// Special care should be taken about passing before and after parameters. The `before` scheme should be ordered from a colour to a centric value and vice versa for `after` with centric value to a colour. The centric value should be a dark colour on a light background.
+    /// Special care should be taken about passing before and after parameters. The `before` scheme should be ordered from a color to a centric value and vice versa for `after` with centric value to a color. The centric value should be a dark color on a light background.
     pub fn diverging_gradient(below_zero: Self, above_zero: Self) -> Self {
         let zero = below_zero.swatches.len();
         Self {
@@ -43,25 +43,25 @@ impl ColourScheme {
     }
 
     fn get_index(&self, index: usize) -> usize {
-        // Note: not using checked_rem_euclid as we're guaranteed to have at least one colour
+        // Note: not using checked_rem_euclid as we're guaranteed to have at least one color
         index.rem_euclid(self.swatches.len())
     }
 
-    /// Get the colour at the given index. Indexes are wrapped around the number of swatches.
-    pub fn by_index(&self, index: usize) -> Colour {
+    /// Get the color at the given index. Indexes are wrapped around the number of swatches.
+    pub fn by_index(&self, index: usize) -> Color {
         let index = self.get_index(index);
         self.swatches[index]
     }
 
-    /// Set the colour at the given index. Indexes are wrapped around the number of swatches.
-    pub fn set_by_index(&mut self, index: usize, colour: Colour) {
+    /// Set the color at the given index. Indexes are wrapped around the number of swatches.
+    pub fn set_by_index(&mut self, index: usize, color: Color) {
         let index = self.get_index(index);
-        self.swatches[index] = colour;
+        self.swatches[index] = color;
     }
 
-    /// Invert the colour scheme. Useful for changing the direction of a gradient. All Chartistry's default colour palettes assume a light background.
+    /// Invert the color scheme. Useful for changing the direction of a gradient. All Chartistry's default color palettes assume a light background.
     ///
-    /// On a light background you should aim to have the lightest colour first and the darkest last. Vice versa for a dark background.
+    /// On a light background you should aim to have the lightest color first and the darkest last. Vice versa for a dark background.
     pub fn invert(self) -> Self {
         let mut swatches = self.swatches.clone();
         swatches.reverse();
@@ -87,14 +87,14 @@ impl ColourScheme {
         (line as f64 / (total as f64 - 1.0) * swatches as f64) as usize
     }
 
-    /// Interpolate between the colours in the scheme. The line is the current line and the total is the total number of lines. Picks the two colours before and after the line and interpolates between them.
-    pub fn interpolate(&self, line: usize, total: usize) -> Colour {
+    /// Interpolate between the colors in the scheme. The line is the current line and the total is the total number of lines. Picks the two colors before and after the line and interpolates between them.
+    pub fn interpolate(&self, line: usize, total: usize) -> Color {
         let before_i = self.line_to_prior_swatch_index(line, total);
         // Last swatch? Can't interpolate so return it
         if before_i == self.swatches.len() - 1 {
             return self.swatches[before_i];
         }
-        // Look up colours before and after
+        // Look up colors before and after
         let before = self.swatches[before_i];
         let after = self.swatches[before_i + 1];
         // Find ratio between the two
@@ -109,7 +109,7 @@ impl ColourScheme {
 #[component]
 pub fn LinearGradientSvg(
     #[prop(into)] id: String,
-    scheme: Signal<ColourScheme>,
+    scheme: Signal<ColorScheme>,
     range_y: Signal<Option<(f64, f64)>>,
 ) -> impl IntoView {
     view! {
@@ -120,9 +120,9 @@ pub fn LinearGradientSvg(
     .into_any()
 }
 
-impl ColourScheme {
+impl ColorScheme {
     fn stops(&self, range_y: (f64, f64)) -> impl IntoView {
-        // TODO: collect more colour scheme uses and convert schemes into an enum / trait
+        // TODO: collect more color scheme uses and convert schemes into an enum / trait
         if self.zero.is_some() {
             self.diverging_stops(range_y).into_any()
         } else {
@@ -155,7 +155,7 @@ impl ColourScheme {
     }
 
     /// Separate the swatches into two halves at the zero value. The first half is below zero and the second half is the rest (zero and above). If not a diverging gradient, all swatches will be seen as above zero.
-    fn diverging_swatches(&self) -> (&[Colour], &[Colour]) {
+    fn diverging_swatches(&self) -> (&[Color], &[Color]) {
         if let Some(zero_index) = self.zero {
             self.swatches.split_at(zero_index)
         } else {
@@ -165,31 +165,31 @@ impl ColourScheme {
 }
 
 /// Generates a <stop> for each swatch. Offset is generated using `from + i * step` where i is the index of the swatch. The offset is formatted as a percentage (0% to 100%). `from` and `step` must be 0.0 to 1.0.
-fn generate_stops(swatches: &[Colour], from: f64, step: f64) -> impl IntoView {
+fn generate_stops(swatches: &[Color], from: f64, step: f64) -> impl IntoView {
     swatches
         .iter()
         .enumerate()
         // % of the index (0.0 - 1.0)
-        .map(|(i, colour)| (from + i as f64 * step, colour))
+        .map(|(i, color)| (from + i as f64 * step, color))
         // Keep percentages in range
         .filter(|(percent, _)| (0.0..1.0).contains(percent))
-        .map(|(percent, colour)| {
+        .map(|(percent, color)| {
             // Format as a percentage (0% - 100%)
             let offset = format!("{:.2}%", percent * 100.0);
             view! {
-                <stop offset=offset stop-color=colour.to_string() />
+                <stop offset=offset stop-color=color.to_string() />
             }
         })
         .collect_view()
 }
 
-impl From<SequentialGradient> for ColourScheme {
-    fn from((first, rest): (Colour, &[Colour])) -> Self {
+impl From<SequentialGradient> for ColorScheme {
+    fn from((first, rest): (Color, &[Color])) -> Self {
         Self::new(first, rest.to_vec())
     }
 }
 
-impl From<DivergingGradient> for ColourScheme {
+impl From<DivergingGradient> for ColorScheme {
     fn from((below_zero, above_zero): DivergingGradient) -> Self {
         let below_zero = below_zero.into();
         let above_zero = above_zero.into();
@@ -197,53 +197,53 @@ impl From<DivergingGradient> for ColourScheme {
     }
 }
 
-macro_rules! from_array_to_colour_scheme {
+macro_rules! from_array_to_color_scheme {
     ($($n:literal),*) => {
         $(
-            impl From<[Colour; $n]> for ColourScheme {
-                fn from(colours: [Colour; $n]) -> Self {
-                    Self::new(colours[0], (&colours[1..]).to_vec())
+            impl From<[Color; $n]> for ColorScheme {
+                fn from(colors: [Color; $n]) -> Self {
+                    Self::new(colors[0], (&colors[1..]).to_vec())
                 }
             }
         )*
     };
 }
-from_array_to_colour_scheme!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+from_array_to_color_scheme!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn scheme3() -> ColourScheme {
-        ColourScheme::from([
-            Colour::from_rgb(0, 0, 0),
-            Colour::from_rgb(255, 255, 255),
-            Colour::from_rgb(0, 0, 0),
+    fn scheme3() -> ColorScheme {
+        ColorScheme::from([
+            Color::from_rgb(0, 0, 0),
+            Color::from_rgb(255, 255, 255),
+            Color::from_rgb(0, 0, 0),
         ])
     }
 
-    const SCHEME10: [Colour; 10] = [
-        Colour::from_rgb(0, 0, 0),
-        Colour::from_rgb(255, 255, 255),
-        Colour::from_rgb(0, 0, 0),
-        Colour::from_rgb(255, 255, 255),
-        Colour::from_rgb(0, 0, 0),
-        Colour::from_rgb(255, 255, 255),
-        Colour::from_rgb(0, 0, 0),
-        Colour::from_rgb(255, 255, 255),
-        Colour::from_rgb(0, 0, 0),
-        Colour::from_rgb(255, 255, 255),
+    const SCHEME10: [Color; 10] = [
+        Color::from_rgb(0, 0, 0),
+        Color::from_rgb(255, 255, 255),
+        Color::from_rgb(0, 0, 0),
+        Color::from_rgb(255, 255, 255),
+        Color::from_rgb(0, 0, 0),
+        Color::from_rgb(255, 255, 255),
+        Color::from_rgb(0, 0, 0),
+        Color::from_rgb(255, 255, 255),
+        Color::from_rgb(0, 0, 0),
+        Color::from_rgb(255, 255, 255),
     ];
-    fn scheme10() -> ColourScheme {
-        ColourScheme::from(SCHEME10)
+    fn scheme10() -> ColorScheme {
+        ColorScheme::from(SCHEME10)
     }
 
     #[test]
-    fn test_colour_scheme() {
+    fn test_color_scheme() {
         let scheme = scheme3();
-        assert_eq!(scheme.by_index(0), Colour::from_rgb(0, 0, 0));
-        assert_eq!(scheme.by_index(1), Colour::from_rgb(255, 255, 255));
-        assert_eq!(scheme.by_index(2), Colour::from_rgb(0, 0, 0));
+        assert_eq!(scheme.by_index(0), Color::from_rgb(0, 0, 0));
+        assert_eq!(scheme.by_index(1), Color::from_rgb(255, 255, 255));
+        assert_eq!(scheme.by_index(2), Color::from_rgb(0, 0, 0));
     }
 
     #[test]
@@ -295,27 +295,27 @@ mod tests {
         let scheme3 = scheme3();
         let scheme10 = scheme10();
         // One to one mapping of swatches to lines
-        assert_eq!(scheme3.interpolate(0, 3), Colour::from_rgb(0, 0, 0));
-        assert_eq!(scheme3.interpolate(1, 3), Colour::from_rgb(255, 255, 255));
-        assert_eq!(scheme3.interpolate(2, 3), Colour::from_rgb(0, 0, 0));
+        assert_eq!(scheme3.interpolate(0, 3), Color::from_rgb(0, 0, 0));
+        assert_eq!(scheme3.interpolate(1, 3), Color::from_rgb(255, 255, 255));
+        assert_eq!(scheme3.interpolate(2, 3), Color::from_rgb(0, 0, 0));
         // More lines than swatches
-        assert_eq!(scheme3.interpolate(0, 9), Colour::from_rgb(0, 0, 0));
-        assert_eq!(scheme3.interpolate(1, 9), Colour::from_rgb(85, 85, 85));
-        assert_eq!(scheme3.interpolate(2, 9), Colour::from_rgb(170, 170, 170));
-        assert_eq!(scheme3.interpolate(3, 9), Colour::from_rgb(255, 255, 255));
-        assert_eq!(scheme3.interpolate(4, 9), Colour::from_rgb(170, 170, 170));
-        assert_eq!(scheme3.interpolate(5, 9), Colour::from_rgb(85, 85, 85));
-        assert_eq!(scheme3.interpolate(6, 9), Colour::from_rgb(0, 0, 0));
-        assert_eq!(scheme3.interpolate(7, 9), Colour::from_rgb(0, 0, 0));
-        assert_eq!(scheme3.interpolate(8, 9), Colour::from_rgb(0, 0, 0));
+        assert_eq!(scheme3.interpolate(0, 9), Color::from_rgb(0, 0, 0));
+        assert_eq!(scheme3.interpolate(1, 9), Color::from_rgb(85, 85, 85));
+        assert_eq!(scheme3.interpolate(2, 9), Color::from_rgb(170, 170, 170));
+        assert_eq!(scheme3.interpolate(3, 9), Color::from_rgb(255, 255, 255));
+        assert_eq!(scheme3.interpolate(4, 9), Color::from_rgb(170, 170, 170));
+        assert_eq!(scheme3.interpolate(5, 9), Color::from_rgb(85, 85, 85));
+        assert_eq!(scheme3.interpolate(6, 9), Color::from_rgb(0, 0, 0));
+        assert_eq!(scheme3.interpolate(7, 9), Color::from_rgb(0, 0, 0));
+        assert_eq!(scheme3.interpolate(8, 9), Color::from_rgb(0, 0, 0));
         // More swatches than lines
-        assert_eq!(scheme10.interpolate(0, 1), Colour::from_rgb(0, 0, 0));
-        assert_eq!(scheme10.interpolate(0, 2), Colour::from_rgb(0, 0, 0));
-        assert_eq!(scheme10.interpolate(1, 2), Colour::from_rgb(255, 255, 255));
-        assert_eq!(scheme10.interpolate(0, 3), Colour::from_rgb(0, 0, 0));
-        assert_eq!(scheme10.interpolate(1, 3), Colour::from_rgb(255, 255, 255));
-        assert_eq!(scheme10.interpolate(2, 3), Colour::from_rgb(255, 255, 255));
-        assert_eq!(scheme10.interpolate(2, 5), Colour::from_rgb(255, 255, 255));
-        assert_eq!(scheme10.interpolate(2, 8), Colour::from_rgb(255, 255, 255));
+        assert_eq!(scheme10.interpolate(0, 1), Color::from_rgb(0, 0, 0));
+        assert_eq!(scheme10.interpolate(0, 2), Color::from_rgb(0, 0, 0));
+        assert_eq!(scheme10.interpolate(1, 2), Color::from_rgb(255, 255, 255));
+        assert_eq!(scheme10.interpolate(0, 3), Color::from_rgb(0, 0, 0));
+        assert_eq!(scheme10.interpolate(1, 3), Color::from_rgb(255, 255, 255));
+        assert_eq!(scheme10.interpolate(2, 3), Color::from_rgb(255, 255, 255));
+        assert_eq!(scheme10.interpolate(2, 5), Color::from_rgb(255, 255, 255));
+        assert_eq!(scheme10.interpolate(2, 8), Color::from_rgb(255, 255, 255));
     }
 }

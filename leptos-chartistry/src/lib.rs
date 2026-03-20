@@ -55,7 +55,7 @@
 mod aspect_ratio;
 mod bounds;
 mod chart;
-mod colours;
+mod colors;
 mod debug;
 mod edge;
 mod inner;
@@ -72,12 +72,12 @@ mod use_watched_node;
 pub use aspect_ratio::AspectRatio;
 pub use orientation::Orientation;
 pub use chart::Chart;
-pub use colours::{Colour, ColourScheme, DivergingGradient, SequentialGradient};
+pub use colors::{Color, ColorScheme, DivergingGradient, SequentialGradient};
 pub use edge::Edge;
 pub use inner::{
-    axis_marker::{AxisMarker, AxisPlacement, AXIS_MARKER_COLOUR},
-    grid_line::{XGridLine, YGridLine, GRID_LINE_COLOUR},
-    guide_line::{AlignOver, XGuideLine, YGuideLine, GUIDE_LINE_COLOUR},
+    axis_marker::{AxisMarker, AxisPlacement, AXIS_MARKER_COLOR},
+    grid_line::{XGridLine, YGridLine, GRID_LINE_COLOR},
+    guide_line::{AlignOver, XGuideLine, YGuideLine, GUIDE_LINE_COLOR},
     legend::InsetLegend,
     InnerLayout, IntoInner, IntoInner as _,
 };
@@ -94,7 +94,7 @@ pub use padding::Padding;
 pub use series::{
     Bar, BarPlacement, Interpolation, Line, Marker, MarkerShape, Series, Snippet, Stack, Step,
     UseY, YAxis, BAR_GAP, BAR_GAP_INNER, DIVERGING_GRADIENT, LINEAR_GRADIENT,
-    SERIES_COLOUR_SCHEME, STACK_COLOUR_SCHEME,
+    SERIES_COLOR_SCHEME, STACK_COLOR_SCHEME,
 };
 pub use state::{PreState, State};
 pub use ticks::{

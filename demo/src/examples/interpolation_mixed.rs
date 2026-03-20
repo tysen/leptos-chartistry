@@ -14,15 +14,15 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
         // curves.
         .line(
             Line::new(|data: &MyData| data.y1)
-                .with_colour(GUIDE_LINE_COLOUR)
-                .with_marker(Marker::from_shape(MarkerShape::Circle).with_colour(GUIDE_LINE_COLOUR))
+                .with_color(GUIDE_LINE_COLOR)
+                .with_marker(Marker::from_shape(MarkerShape::Circle).with_color(GUIDE_LINE_COLOR))
                 .with_name("linear")
                 .with_interpolation(Interpolation::Linear),
         )
         .line(
             Line::new(|data: &MyData| data.y2)
-                .with_colour(GUIDE_LINE_COLOUR)
-                .with_marker(Marker::from_shape(MarkerShape::Circle).with_colour(GUIDE_LINE_COLOUR))
+                .with_color(GUIDE_LINE_COLOR)
+                .with_marker(Marker::from_shape(MarkerShape::Circle).with_color(GUIDE_LINE_COLOR))
                 .with_interpolation(Interpolation::Linear),
         );
     view! {

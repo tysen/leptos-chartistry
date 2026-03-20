@@ -1,5 +1,5 @@
 use super::{ApplyUseSeries, GetYValue, IntoUseBar, SeriesAcc, UseY};
-use crate::{state::State, Colour, Tick};
+use crate::{state::State, Color, Tick};
 use leptos::prelude::*;
 use std::sync::Arc;
 
@@ -25,8 +25,8 @@ pub struct Bar<T, Y> {
     get_y: Arc<dyn GetYValue<T, Y>>,
     /// Set the name of the bar as used in the legend and tooltip.
     pub name: RwSignal<String>,
-    /// Set the colour of the bar. If not set, the next colour in the series will be used. Default is `None`.
-    pub colour: RwSignal<Option<Colour>>,
+    /// Set the color of the bar. If not set, the next color in the series will be used. Default is `None`.
+    pub color: RwSignal<Option<Color>>,
     /// Sets where the bar's bottom is placed. Defaults to the zero line.
     pub placement: RwSignal<BarPlacement>,
     /// Set the gap between group bars. Clamped to 0.0 and 1.0. Defaults to 0.1.
@@ -53,7 +53,7 @@ pub enum BarPlacement {
 #[derive(Clone, Debug, PartialEq)]
 pub struct UseBar {
     group_id: usize,
-    colour: Signal<Colour>,
+    color: Signal<Color>,
     placement: RwSignal<BarPlacement>,
     gap: RwSignal<f64>,
     group_gap: RwSignal<f64>,
@@ -70,7 +70,7 @@ impl<T, Y> Bar<T, Y> {
         Self {
             get_y: Arc::new(get_y),
             name: RwSignal::default(),
-            colour: RwSignal::default(),
+            color: RwSignal::default(),
             placement: RwSignal::default(),
             gap: RwSignal::new(BAR_GAP),
             group_gap: RwSignal::new(BAR_GAP_INNER),
@@ -83,9 +83,9 @@ impl<T, Y> Bar<T, Y> {
         self
     }
 
-    /// Set the colour of the bar. If not set, the next colour in the series will be used.
-    pub fn with_colour(self, colour: impl Into<Option<Colour>>) -> Self {
-        self.colour.set(colour.into());
+    /// Set the color of the bar. If not set, the next color in the series will be used.
+    pub fn with_color(self, color: impl Into<Option<Color>>) -> Self {
+        self.color.set(color.into());
         self
     }
 
@@ -116,7 +116,7 @@ impl<T, Y> Clone for Bar<T, Y> {
             gap: self.gap,
             group_gap: self.group_gap,
             name: self.name,
-            colour: self.colour,
+            color: self.color,
         }
     }
 }
@@ -129,8 +129,8 @@ impl<T, Y: Tick, F: Fn(&T) -> Y + Send + Sync + 'static> From<F> for Bar<T, Y> {
 
 impl<T, Y> ApplyUseSeries<T, Y> for Bar<T, Y> {
     fn apply_use_series(self: Arc<Self>, series: &mut SeriesAcc<T, Y>) {
-        let colour = series.next_colour();
-        _ = series.push_bar(colour, (*self).clone());
+        let color = series.next_color();
+        _ = series.push_bar(color, (*self).clone());
     }
 }
 
@@ -139,16 +139,16 @@ impl<T, Y> IntoUseBar<T, Y> for Bar<T, Y> {
         self,
         id: usize,
         group_id: usize,
-        colour: Memo<Colour>,
+        color: Memo<Color>,
     ) -> (UseY, Arc<dyn GetYValue<T, Y>>) {
-        let override_colour = self.colour;
-        let colour = Signal::derive(move || override_colour.get().unwrap_or(colour.get()));
+        let override_color = self.color;
+        let color = Signal::derive(move || override_color.get().unwrap_or(color.get()));
         let bar = UseY::new_bar(
             id,
             self.name,
             UseBar {
                 group_id,
-                colour,
+                color,
                 placement: self.placement,
                 gap: self.gap,
                 group_gap: self.group_gap,
@@ -256,7 +256,7 @@ pub fn RenderBar<X: Tick, Y: Tick>(
     view! {
         <g
             class="_chartistry_bar"
-            fill=move || bar.colour.get().to_string()>
+            fill=move || bar.color.get().to_string()>
             {rects}
         </g>
     }

@@ -1,11 +1,11 @@
 use crate::{
-    colours::Colour, debug::DebugRect, projection::Projection, series::YAxis, state::State,
+    colors::Color, debug::DebugRect, projection::Projection, series::YAxis, state::State,
     ticks::GeneratedTicks, Tick, TickLabels,
 };
 use leptos::prelude::*;
 
-/// Default colour for grid lines.
-pub const GRID_LINE_COLOUR: Colour = Colour::from_rgb(0xEF, 0xF2, 0xFA);
+/// Default color for grid lines.
+pub const GRID_LINE_COLOR: Color = Color::from_rgb(0xEF, 0xF2, 0xFA);
 
 macro_rules! impl_grid_line {
     ($name:ident) => {
@@ -15,8 +15,8 @@ macro_rules! impl_grid_line {
         pub struct $name<XY: Tick> {
             /// Width of the grid line.
             pub width: RwSignal<f64>,
-            /// Colour of the grid line.
-            pub colour: RwSignal<Colour>,
+            /// Color of the grid line.
+            pub color: RwSignal<Color>,
             /// Ticks to align the grid line to.
             pub ticks: TickLabels<XY>,
         }
@@ -30,9 +30,9 @@ macro_rules! impl_grid_line {
                 }
             }
 
-            /// Sets the colour of the grid line.
-            pub fn with_colour(self, colour: impl Into<Colour>) -> Self {
-                self.colour.set(colour.into());
+            /// Sets the color of the grid line.
+            pub fn with_color(self, color: impl Into<Color>) -> Self {
+                self.color.set(color.into());
                 self
             }
         }
@@ -41,7 +41,7 @@ macro_rules! impl_grid_line {
             fn default() -> Self {
                 Self {
                     width: RwSignal::new(1.0),
-                    colour: RwSignal::new(GRID_LINE_COLOUR),
+                    color: RwSignal::new(GRID_LINE_COLOR),
                     ticks: TickLabels::default(),
                 }
             }
@@ -57,8 +57,8 @@ impl_grid_line!(XGridLine);
 pub struct YGridLine<XY: Tick> {
     /// Width of the grid line.
     pub width: RwSignal<f64>,
-    /// Colour of the grid line.
-    pub colour: RwSignal<Colour>,
+    /// Color of the grid line.
+    pub color: RwSignal<Color>,
     /// Ticks to align the grid line to.
     pub ticks: TickLabels<XY>,
     /// Which Y-axis to align grid lines to. Default is [YAxis::Primary].
@@ -74,9 +74,9 @@ impl<XY: Tick> YGridLine<XY> {
         }
     }
 
-    /// Sets the colour of the grid line.
-    pub fn with_colour(self, colour: impl Into<Colour>) -> Self {
-        self.colour.set(colour.into());
+    /// Sets the color of the grid line.
+    pub fn with_color(self, color: impl Into<Color>) -> Self {
+        self.color.set(color.into());
         self
     }
 
@@ -99,7 +99,7 @@ impl<XY: Tick> Default for YGridLine<XY> {
     fn default() -> Self {
         Self {
             width: RwSignal::new(1.0),
-            colour: RwSignal::new(GRID_LINE_COLOUR),
+            color: RwSignal::new(GRID_LINE_COLOR),
             ticks: TickLabels::default(),
             axis: YAxis::Primary,
         }
@@ -110,7 +110,7 @@ macro_rules! impl_use_grid_line {
     ($name:ident) => {
         pub struct $name<XY: Tick> {
             width: RwSignal<f64>,
-            colour: RwSignal<Colour>,
+            color: RwSignal<Color>,
             ticks: Memo<GeneratedTicks<XY>>,
         }
 
@@ -118,7 +118,7 @@ macro_rules! impl_use_grid_line {
             fn clone(&self) -> Self {
                 Self {
                     width: self.width,
-                    colour: self.colour,
+                    color: self.color,
                     ticks: self.ticks,
                 }
             }
@@ -130,7 +130,7 @@ impl_use_grid_line!(UseXGridLine);
 
 pub struct UseYGridLine<XY: Tick> {
     width: RwSignal<f64>,
-    colour: RwSignal<Colour>,
+    color: RwSignal<Color>,
     ticks: Memo<GeneratedTicks<XY>>,
     axis: YAxis,
 }
@@ -139,7 +139,7 @@ impl<XY: Tick> Clone for UseYGridLine<XY> {
     fn clone(&self) -> Self {
         Self {
             width: self.width,
-            colour: self.colour,
+            color: self.color,
             ticks: self.ticks,
             axis: self.axis,
         }
@@ -152,7 +152,7 @@ impl<X: Tick> XGridLine<X> {
         let avail_width = Signal::derive(move || inner.with(|inner| inner.width()));
         UseXGridLine {
             width: self.width,
-            colour: self.colour,
+            color: self.color,
             ticks: self.ticks.generate_horizontal(state.pre.data.range_x, &state.pre, avail_width),
         }
     }
@@ -168,7 +168,7 @@ impl<Y: Tick> YGridLine<Y> {
         };
         UseYGridLine {
             width: self.width,
-            colour: self.colour,
+            color: self.color,
             ticks: self.ticks.generate_vertical(range, &state.pre, avail_height),
             axis: self.axis,
         }
@@ -182,7 +182,7 @@ pub(super) fn XGridLine<X: Tick, Y: Tick>(
 ) -> impl IntoView {
     view! {
         <GridLine id="x" ticks=line.ticks proj=state.projection_primary is_x=true
-            width=line.width colour=line.colour state=state />
+            width=line.width color=line.color state=state />
     }
 }
 
@@ -197,7 +197,7 @@ pub(super) fn YGridLine<X: Tick, Y: Tick>(
     };
     view! {
         <GridLine id="y" ticks=line.ticks proj=proj is_x=false
-            width=line.width colour=line.colour state=state />
+            width=line.width color=line.color state=state />
     }
 }
 
@@ -208,7 +208,7 @@ fn GridLine<XY: Tick, X: Tick, Y: Tick>(
     proj: Memo<Projection>,
     is_x: bool,
     width: RwSignal<f64>,
-    colour: RwSignal<Colour>,
+    color: RwSignal<Color>,
     state: State<X, Y>,
 ) -> impl IntoView {
     let debug = state.pre.debug;
@@ -242,7 +242,7 @@ fn GridLine<XY: Tick, X: Tick, Y: Tick>(
     view! {
         <g
             class=format!("_chartistry_grid_line_{}", id)
-            stroke=move || colour.get().to_string()
+            stroke=move || color.get().to_string()
             stroke-width=width>
             <DebugRect label=format!("grid_line_{}", id) debug=debug />
             {lines}

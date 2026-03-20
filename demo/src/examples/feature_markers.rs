@@ -2,7 +2,7 @@ use super::MyData;
 use leptos::prelude::*;
 use leptos_chartistry::*;
 
-const WHITE: Colour = Colour::from_rgb(255, 255, 255);
+const WHITE: Color = Color::from_rgb(255, 255, 255);
 
 #[component]
 pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView {
@@ -19,10 +19,10 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
                 .with_marker(
                     // We can also decorate our markers. Here we put a border on
                     // the marker that's the same as the line and then set the
-                    // marker colour to white. This gives a hollow marker.
+                    // marker color to white. This gives a hollow marker.
                     Marker::from_shape(MarkerShape::Circle)
-                        .with_colour(WHITE)
-                        // Note: default border colour is the line colour
+                        .with_color(WHITE)
+                        // Note: default border color is the line color
                         .with_border_width(1.0),
                 ),
         );

@@ -2,7 +2,7 @@ use crate::{
     debug::DebugRect,
     series::{Snippet, UseY, YAxis},
     state::State,
-    Tick, TickLabels, AXIS_MARKER_COLOUR,
+    Tick, TickLabels, AXIS_MARKER_COLOR,
 };
 use leptos::prelude::*;
 use std::{
@@ -393,7 +393,7 @@ pub(crate) fn Tooltip<X: Tick, Y: Tick>(
             <aside
                 class="_chartistry_tooltip"
                 style="position: absolute; z-index: 1; width: max-content; height: max-content; transform: translateY(-50%); background-color: #fff; white-space: pre; font-family: monospace;"
-                style:border=format!("1px solid {}", AXIS_MARKER_COLOUR)
+                style:border=format!("1px solid {}", AXIS_MARKER_COLOR)
                 style:top=move || format!("calc({}px)", state.mouse_page.get().1)
                 style:right=move || format!("calc(100% - {}px + {}px)", state.mouse_page.get().0, cursor_distance.get())
                 style:padding=move || padding.get().to_css_style()>

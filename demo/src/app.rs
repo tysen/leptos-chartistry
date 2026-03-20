@@ -41,7 +41,7 @@ pub fn App() -> impl IntoView {
                     <Route path=(StaticSegment("examples"), StaticSegment(Example::MixedInterpolation)) view=|| view_example(Example::MixedInterpolation) />
                     <Route path=(StaticSegment("examples"), StaticSegment(Example::Stepped)) view=|| view_example(Example::Stepped) />
                     <Route path=(StaticSegment("examples"), StaticSegment(Example::Tooltip)) view=|| view_example(Example::Tooltip) />
-                    <Route path=(StaticSegment("examples"), StaticSegment(Example::Colours)) view=|| view_example(Example::Colours) />
+                    <Route path=(StaticSegment("examples"), StaticSegment(Example::Colors)) view=|| view_example(Example::Colors) />
                     <Route path=(StaticSegment("examples"), StaticSegment(Example::Markers)) view=|| view_example(Example::Markers) />
                     <Route path=(StaticSegment("examples"), StaticSegment(Example::Markers2)) view=|| view_example(Example::Markers2) />
                     <Route path=(StaticSegment("examples"), StaticSegment(Example::LineGradient)) view=|| view_example(Example::LineGradient) />

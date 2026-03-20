@@ -1,9 +1,9 @@
-use crate::{bounds::Bounds, colours::Colour, debug::DebugRect, state::State, Tick};
+use crate::{bounds::Bounds, colors::Color, debug::DebugRect, state::State, Tick};
 use leptos::prelude::*;
 use std::str::FromStr;
 
-/// Default colour for guide lines.
-pub const GUIDE_LINE_COLOUR: Colour = Colour::from_rgb(0x9A, 0x9A, 0x9A);
+/// Default color for guide lines.
+pub const GUIDE_LINE_COLOR: Color = Color::from_rgb(0x9A, 0x9A, 0x9A);
 
 macro_rules! impl_guide_line {
     ($name:ident) => {
@@ -15,8 +15,8 @@ macro_rules! impl_guide_line {
             pub align: RwSignal<AlignOver>,
             /// Width of the guide line.
             pub width: RwSignal<f64>,
-            /// Colour of the guide line.
-            pub colour: RwSignal<Colour>,
+            /// Color of the guide line.
+            pub color: RwSignal<Color>,
         }
 
         impl $name {
@@ -24,7 +24,7 @@ macro_rules! impl_guide_line {
                 Self {
                     align: RwSignal::new(align),
                     width: RwSignal::new(1.0),
-                    colour: RwSignal::new(GUIDE_LINE_COLOUR),
+                    color: RwSignal::new(GUIDE_LINE_COLOR),
                 }
             }
 
@@ -38,9 +38,9 @@ macro_rules! impl_guide_line {
                 Self::new(AlignOver::Data)
             }
 
-            /// Sets the colour of the guide line.
-            pub fn with_colour(self, colour: impl Into<Colour>) -> Self {
-                self.colour.set(colour.into());
+            /// Sets the color of the guide line.
+            pub fn with_color(self, color: impl Into<Color>) -> Self {
+                self.color.set(color.into());
                 self
             }
         }
@@ -146,7 +146,7 @@ pub(super) fn XGuideLine<X: Tick, Y: Tick>(
     });
 
     view! {
-        <GuideLine id="x" width=line.width colour=line.colour state=state pos=pos />
+        <GuideLine id="x" width=line.width color=line.color state=state pos=pos />
     }
 }
 
@@ -174,7 +174,7 @@ pub(super) fn YGuideLine<X: Tick, Y: Tick>(
         }
     });
     view! {
-        <GuideLine id="y" width=line.width colour=line.colour state=state pos=pos />
+        <GuideLine id="y" width=line.width color=line.color state=state pos=pos />
     }
 }
 
@@ -182,7 +182,7 @@ pub(super) fn YGuideLine<X: Tick, Y: Tick>(
 fn GuideLine<X: Tick, Y: Tick>(
     id: &'static str,
     width: RwSignal<f64>,
-    colour: RwSignal<Colour>,
+    color: RwSignal<Color>,
     state: State<X, Y>,
     pos: Signal<Bounds>,
 ) -> impl IntoView {
@@ -202,7 +202,7 @@ fn GuideLine<X: Tick, Y: Tick>(
     view! {
         <g
             class=format!("_chartistry_{}_guide_line", id)
-            stroke=move || colour.get().to_string()
+            stroke=move || color.get().to_string()
             stroke-width=width>
             <Show when=move || hover_inner.get() && have_data.get() >
                 <DebugRect label=format!("{}_guide_line", id) debug=debug />

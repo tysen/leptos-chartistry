@@ -3,7 +3,7 @@ pub mod edge_layout;
 pub mod edge_legend;
 pub mod edge_rotated_label;
 pub mod edge_tick_labels;
-pub mod feature_colours;
+pub mod feature_colors;
 pub mod feature_css;
 pub mod feature_line_gradient;
 pub mod feature_markers;

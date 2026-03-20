@@ -52,7 +52,7 @@ const ALL_LINE_INTERPOLATIONS: &[Interpolation] = &[
 
 const JS_TIMESTAMP_FMT: &str = "%FT%R";
 
-const WHITE: Colour = Colour::from_rgb(255, 255, 255);
+const WHITE: Color = Color::from_rgb(255, 255, 255);
 
 #[derive(Clone)]
 struct Options<Opt>(Vec<Opt>);
@@ -146,7 +146,7 @@ pub fn Demo() -> impl IntoView {
             .with_name("cosine")
             .with_marker(
                 Marker::from_shape(MarkerShape::Circle)
-                    .with_colour(WHITE)
+                    .with_color(WHITE)
                     .with_border_width(1.0),
             ),
     ];
@@ -166,7 +166,7 @@ pub fn Demo() -> impl IntoView {
     let series = Series::new(|w: &Wave| w.x).lines(lines.clone());
     let (min_x, max_x) = (series.min_x, series.max_x);
     let (min_y, max_y) = (series.min_y, series.max_y);
-    let series_colours = series.colours;
+    let series_colors = series.colors;
     let series_len = series.len();
 
     // Tooltip
@@ -268,7 +268,7 @@ pub fn Demo() -> impl IntoView {
                     <legend>"Series options"</legend>
                     <p>
                         <label for="series_scheme">"Scheme"</label>
-                        <span><SelectColourScheme colours=series_colours lines=series_len /></span>
+                        <span><SelectColorScheme colors=series_colors lines=series_len /></span>
                     </p>
                     <p>
                         <label for="line_index">"Line"</label>
@@ -286,7 +286,7 @@ pub fn Demo() -> impl IntoView {
                     {move || view!{
                         <SeriesLineOpts
                             line=edit_lines[line_tab.get()].clone()
-                            colour=series_colours.get().by_index(line_tab.get()) />
+                            color=series_colors.get().by_index(line_tab.get()) />
                     }}
                 </fieldset>
 
@@ -626,16 +626,16 @@ fn inner_layout_opts<X: Tick, Y: Tick>(option: InnerLayout<X, Y>) -> impl IntoVi
             <InsetLegendOpts legend=legend />
         }),
         InnerLayout::XGridLine(line) => EitherOf7::C(view! {
-            <GridLineOpts width=line.width colour=line.colour />
+            <GridLineOpts width=line.width color=line.color />
         }),
         InnerLayout::YGridLine(line) => EitherOf7::D(view! {
-            <GridLineOpts width=line.width colour=line.colour />
+            <GridLineOpts width=line.width color=line.color />
         }),
         InnerLayout::XGuideLine(line) => EitherOf7::E(view! {
-            <GuideLineOpts align=line.align width=line.width colour=line.colour />
+            <GuideLineOpts align=line.align width=line.width color=line.color />
         }),
         InnerLayout::YGuideLine(line) => EitherOf7::F(view! {
-            <GuideLineOpts align=line.align width=line.width colour=line.colour />
+            <GuideLineOpts align=line.align width=line.width color=line.color />
         }),
         _ => EitherOf7::G(()),
     }
@@ -756,37 +756,37 @@ select_impl!(
 );
 
 #[component]
-fn SelectColour(
+fn SelectColor(
     #[prop(into, optional)] id: Option<String>,
-    colour: RwSignal<Colour>,
+    color: RwSignal<Color>,
 ) -> impl IntoView {
     let on_change = move |ev| {
         if let Ok(value) = event_target_value(&ev).parse() {
-            colour.set(value);
+            color.set(value);
         }
     };
     view! {
-        <input type="color" id=id value=move || colour.get().to_string() on:input=on_change />
+        <input type="color" id=id value=move || color.get().to_string() on:input=on_change />
     }
 }
 
 #[component]
-fn SelectOptionColour(
+fn SelectOptionColor(
     id: &'static str,
-    colour: RwSignal<Option<Colour>>,
-    default: Colour,
+    color: RwSignal<Option<Color>>,
+    default: Color,
     none: &'static str,
 ) -> impl IntoView {
     // Enabled
-    let enabled = move || colour.get().is_some();
+    let enabled = move || color.get().is_some();
     let toggle_enabled = move |ev| {
-        colour.set(event_target_checked(&ev).then_some(default));
+        color.set(event_target_checked(&ev).then_some(default));
     };
-    // Set colour (when enabled)
-    let colour_str = move || colour.get().unwrap_or(default).to_string();
-    let set_colour = move |ev| {
+    // Set color (when enabled)
+    let color_str = move || color.get().unwrap_or(default).to_string();
+    let set_color = move |ev| {
         if let Ok(value) = event_target_value(&ev).parse() {
-            colour.set(Some(value));
+            color.set(Some(value));
         }
     };
     view! {
@@ -800,25 +800,25 @@ fn SelectOptionColour(
             <Show when=move || !enabled()>{none}</Show>
         </label>
         <Show when=enabled>
-            <input type="color" id=id value=colour_str on:input=set_colour />
+            <input type="color" id=id value=color_str on:input=set_color />
         </Show>
     }
 }
 
 #[component]
-fn SelectColourScheme(colours: RwSignal<ColourScheme>, lines: usize) -> impl IntoView {
+fn SelectColorScheme(colors: RwSignal<ColorScheme>, lines: usize) -> impl IntoView {
     (0..lines)
         .map(|line| {
             let on_change = move |ev| {
-                if let Ok(colour) = event_target_value(&ev).parse() {
-                    let mut new_colours = colours.get();
-                    new_colours.set_by_index(line, colour);
-                    colours.set(new_colours);
+                if let Ok(color) = event_target_value(&ev).parse() {
+                    let mut new_colors = colors.get();
+                    new_colors.set_by_index(line, color);
+                    colors.set(new_colors);
                 }
             };
             view! {
                 <input type="color"
-                    value=move || colours.get().by_index(line).to_string()
+                    value=move || colors.get().by_index(line).to_string()
                     on:input=on_change />
             }
         })
@@ -852,7 +852,7 @@ fn TickLabelsOpts<XY: Tick>(ticks: TickLabels<XY>) -> impl IntoView {
 fn AxisMarkerOpts(marker: AxisMarker) -> impl IntoView {
     let on_arrow = move |ev| marker.arrow.set(event_target_checked(&ev));
     view! {
-        <SelectColour colour=marker.colour />
+        <SelectColor color=marker.color />
         " "
         <SelectAxisPlacement placement=marker.placement />
         " "
@@ -875,9 +875,9 @@ fn InsetLegendOpts(legend: InsetLegend) -> impl IntoView {
 }
 
 #[component]
-fn GridLineOpts(width: RwSignal<f64>, colour: RwSignal<Colour>) -> impl IntoView {
+fn GridLineOpts(width: RwSignal<f64>, color: RwSignal<Color>) -> impl IntoView {
     view! {
-        <SelectColour colour=colour />
+        <SelectColor color=color />
         " "
         <WidthInput width=width />
     }
@@ -887,10 +887,10 @@ fn GridLineOpts(width: RwSignal<f64>, colour: RwSignal<Colour>) -> impl IntoView
 fn GuideLineOpts(
     align: RwSignal<AlignOver>,
     width: RwSignal<f64>,
-    colour: RwSignal<Colour>,
+    color: RwSignal<Color>,
 ) -> impl IntoView {
     view! {
-        <SelectColour colour=colour />
+        <SelectColor color=color />
         " "
         <SelectAlignOver align=align />
         " "
@@ -1038,7 +1038,7 @@ fn TooltipCard<X: Tick, Y: Tick>(tooltip: Tooltip<X, Y>) -> impl IntoView {
 }
 
 #[component]
-fn SeriesLineOpts<Y: Tick>(line: Line<Wave, Y>, colour: Colour) -> impl IntoView {
+fn SeriesLineOpts<Y: Tick>(line: Line<Wave, Y>, color: Color) -> impl IntoView {
     view! {
         <p>
             <label for="line_name">"Name"</label>
@@ -1058,8 +1058,8 @@ fn SeriesLineOpts<Y: Tick>(line: Line<Wave, Y>, colour: Colour) -> impl IntoView
             <span><SelectLineInterpolation interpolation=line.interpolation /></span>
         </p>
         <p>
-            <label for="line_colour">"Colour"</label>
-            <span><SelectOptionColour id="line_colour" colour=line.colour default=colour none="use scheme" /></span>
+            <label for="line_color">"Color"</label>
+            <span><SelectOptionColor id="line_color" color=line.color default=color none="use scheme" /></span>
         </p>
         <p>
             <label for="line_marker">"Marker"</label>
@@ -1073,15 +1073,15 @@ fn SeriesLineOpts<Y: Tick>(line: Line<Wave, Y>, colour: Colour) -> impl IntoView
             </span>
         </p>
         <p>
-            <label for="line_marker_colour">"Colour"</label>
-            <span><SelectOptionColour id="line_marker_colour" colour=line.marker.colour default=colour none="use line" /></span>
+            <label for="line_marker_color">"Color"</label>
+            <span><SelectOptionColor id="line_marker_color" color=line.marker.color default=color none="use line" /></span>
         </p>
         <p>
             <label for="line_marker_border">"Border"</label>
             <span>
                 <StepInput value=line.marker.border_width step="0.1" min="0.0" />
                 " "
-                <SelectOptionColour id="line_marker_border" colour=line.marker.border default=colour none="use line" />
+                <SelectOptionColor id="line_marker_border" color=line.marker.border default=color none="use line" />
             </span>
         </p>
     }

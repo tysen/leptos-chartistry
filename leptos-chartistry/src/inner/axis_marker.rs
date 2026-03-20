@@ -1,9 +1,9 @@
-use crate::{colours::Colour, debug::DebugRect, state::State, Tick};
+use crate::{colors::Color, debug::DebugRect, state::State, Tick};
 use leptos::prelude::*;
 use std::str::FromStr;
 
-/// Default colour for axis markers.
-pub const AXIS_MARKER_COLOUR: Colour = Colour::from_rgb(0xD2, 0xD2, 0xD2);
+/// Default color for axis markers.
+pub const AXIS_MARKER_COLOR: Color = Color::from_rgb(0xD2, 0xD2, 0xD2);
 
 /// Builds an axis marker. This marks a boundary (e.g., zero or the chart edge) around the inner chart area.
 #[derive(Clone, Debug, PartialEq)]
@@ -11,8 +11,8 @@ pub const AXIS_MARKER_COLOUR: Colour = Colour::from_rgb(0xD2, 0xD2, 0xD2);
 pub struct AxisMarker {
     /// Placement of the marker.
     pub placement: RwSignal<AxisPlacement>,
-    /// Colour of the marker.
-    pub colour: RwSignal<Colour>,
+    /// Color of the marker.
+    pub color: RwSignal<Color>,
     /// Whether to show a small arrow at the end of the marker pointing outwards from zero.
     pub arrow: RwSignal<bool>,
     /// Width of the marker and arrow line.
@@ -41,7 +41,7 @@ impl AxisMarker {
     fn new(placement: AxisPlacement) -> Self {
         Self {
             placement: RwSignal::new(placement),
-            colour: RwSignal::new(AXIS_MARKER_COLOUR),
+            color: RwSignal::new(AXIS_MARKER_COLOR),
             arrow: RwSignal::new(true),
             width: RwSignal::new(1.0),
         }
@@ -78,9 +78,9 @@ impl AxisMarker {
         self
     }
 
-    /// Sets the marker colour.
-    pub fn with_colour(self, colour: impl Into<Colour>) -> Self {
-        self.colour.set(colour.into());
+    /// Sets the marker color.
+    pub fn with_color(self, color: impl Into<Color>) -> Self {
+        self.color.set(color.into());
         self
     }
 }
@@ -160,12 +160,12 @@ pub(super) fn AxisMarker<X: Tick, Y: Tick>(
         }
     };
 
-    let colour = marker.colour;
-    let colour = move || colour.get().to_string();
+    let color = marker.color;
+    let color = move || color.get().to_string();
     view! {
         <g
             class="_chartistry_axis_marker"
-            stroke=colour
+            stroke=color
             stroke-width=marker.width>
             <Show when=move || in_bounds.get() >
                 <DebugRect label="axis_marker" debug=debug />

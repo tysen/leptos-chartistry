@@ -6,17 +6,17 @@ pub use marker::{Marker, MarkerShape};
 use super::{ApplyUseSeries, IntoUseLine, SeriesAcc, UseData, UseY, YAxis};
 use crate::{
     bounds::Bounds,
-    colours::{Colour, DivergingGradient, LinearGradientSvg, SequentialGradient, BERLIN, LIPARI},
+    colors::{Color, DivergingGradient, LinearGradientSvg, SequentialGradient, BERLIN, LIPARI},
     series::GetYValue,
-    ColourScheme, Tick,
+    ColorScheme, Tick,
 };
 use leptos::prelude::*;
 use std::sync::Arc;
 
-/// Suggested colour scheme for a linear gradient on a line. Uses darker colours for lower values and lighter colours for higher values. Assumes a light background.
+/// Suggested color scheme for a linear gradient on a line. Uses darker colors for lower values and lighter colors for higher values. Assumes a light background.
 pub const LINEAR_GRADIENT: SequentialGradient = LIPARI;
 
-/// Suggested colour scheme for a diverging gradient on a line. Uses a blue for negative values, a dark central value and red for positive values. Assumes a light background.
+/// Suggested color scheme for a diverging gradient on a line. Uses a blue for negative values, a dark central value and red for positive values. Assumes a light background.
 pub const DIVERGING_GRADIENT: DivergingGradient = BERLIN;
 
 /// Draws a line on the chart.
@@ -60,31 +60,31 @@ pub struct Line<T, Y> {
     pub name: RwSignal<String>,
     /// Which Y-axis to plot this line against. Default is [YAxis::Primary] (left).
     pub axis: RwSignal<YAxis>,
-    /// Colour of the line. If not set, the next colour in the series will be used.
-    pub colour: RwSignal<Option<Colour>>,
-    /// Use a linear gradient (colour scheme) for the line. Default is `None` with fallback to the line colour.
-    pub gradient: RwSignal<Option<ColourScheme>>,
+    /// Color of the line. If not set, the next color in the series will be used.
+    pub color: RwSignal<Option<Color>>,
+    /// Use a linear gradient (color scheme) for the line. Default is `None` with fallback to the line color.
+    pub gradient: RwSignal<Option<ColorScheme>>,
     /// Width of the line.
     pub width: RwSignal<f64>,
     /// Interpolation method of the line, aka line smoothing (or not). Describes how the line is drawn between two points. Default is [Interpolation::Monotone].
     pub interpolation: RwSignal<Interpolation>,
     /// Marker at each point on the line.
     pub marker: Marker,
-    /// Fill colour for the region above the line (higher Y values).
-    pub fill_above: RwSignal<Option<Colour>>,
-    /// Fill colour for the region below the line (lower Y values).
-    pub fill_below: RwSignal<Option<Colour>>,
+    /// Fill color for the region above the line (higher Y values).
+    pub fill_above: RwSignal<Option<Color>>,
+    /// Fill color for the region below the line (lower Y values).
+    pub fill_below: RwSignal<Option<Color>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct UseLine {
-    colour: Signal<Colour>,
-    gradient: RwSignal<Option<ColourScheme>>,
+    color: Signal<Color>,
+    gradient: RwSignal<Option<ColorScheme>>,
     width: RwSignal<f64>,
     interpolation: RwSignal<Interpolation>,
     marker: Marker,
-    fill_above: RwSignal<Option<Colour>>,
-    fill_below: RwSignal<Option<Colour>>,
+    fill_above: RwSignal<Option<Color>>,
+    fill_below: RwSignal<Option<Color>>,
 }
 
 impl<T, Y> Line<T, Y> {
@@ -99,7 +99,7 @@ impl<T, Y> Line<T, Y> {
             get_y: Arc::new(get_y),
             name: RwSignal::default(),
             axis: RwSignal::default(),
-            colour: RwSignal::default(),
+            color: RwSignal::default(),
             gradient: RwSignal::default(),
             width: RwSignal::new(1.0),
             interpolation: RwSignal::default(),
@@ -123,16 +123,16 @@ impl<T, Y> Line<T, Y> {
         self
     }
 
-    /// Set the colour of the line. If not set, the next colour in the series will be used.
-    pub fn with_colour(self, colour: impl Into<Option<Colour>>) -> Self {
-        self.colour.set(colour.into());
+    /// Set the color of the line. If not set, the next color in the series will be used.
+    pub fn with_color(self, color: impl Into<Option<Color>>) -> Self {
+        self.color.set(color.into());
         self
     }
 
-    /// Use a colour scheme for the line. Interpolated in SVG by the browser, overrides [Colour]. Default is `None` with fallback to the line colour.
+    /// Use a color scheme for the line. Interpolated in SVG by the browser, overrides [Color]. Default is `None` with fallback to the line color.
     ///
     /// Suggested use with [LINEAR_GRADIENT] or [DIVERGING_GRADIENT] (for data with a zero value).
-    pub fn with_gradient(self, scheme: impl Into<ColourScheme>) -> Self {
+    pub fn with_gradient(self, scheme: impl Into<ColorScheme>) -> Self {
         self.gradient.set(Some(scheme.into()));
         self
     }
@@ -155,15 +155,15 @@ impl<T, Y> Line<T, Y> {
         self
     }
 
-    /// Set the fill colour for the region above the line (higher Y values).
-    pub fn with_fill_above(self, colour: impl Into<Colour>) -> Self {
-        self.fill_above.set(Some(colour.into()));
+    /// Set the fill color for the region above the line (higher Y values).
+    pub fn with_fill_above(self, color: impl Into<Color>) -> Self {
+        self.fill_above.set(Some(color.into()));
         self
     }
 
-    /// Set the fill colour for the region below the line (lower Y values).
-    pub fn with_fill_below(self, colour: impl Into<Colour>) -> Self {
-        self.fill_below.set(Some(colour.into()));
+    /// Set the fill color for the region below the line (lower Y values).
+    pub fn with_fill_below(self, color: impl Into<Color>) -> Self {
+        self.fill_below.set(Some(color.into()));
         self
     }
 }
@@ -174,7 +174,7 @@ impl<T, Y> Clone for Line<T, Y> {
             get_y: self.get_y.clone(),
             name: self.name,
             axis: self.axis,
-            colour: self.colour,
+            color: self.color,
             gradient: self.gradient,
             width: self.width,
             interpolation: self.interpolation,
@@ -203,10 +203,10 @@ impl<T, Y: Tick, U: Fn(&T) -> Y + Send + Sync> GetYValue<T, Y> for U {
 
 impl<T, Y> ApplyUseSeries<T, Y> for Line<T, Y> {
     fn apply_use_series(self: Arc<Self>, series: &mut SeriesAcc<T, Y>) {
-        let colour = series.next_colour();
+        let color = series.next_color();
         // Read axis value during setup - changing axis dynamically requires rebuilding the series
         let axis = self.axis.get_untracked();
-        _ = series.push_line(colour, axis, (*self).clone());
+        _ = series.push_line(color, axis, (*self).clone());
     }
 }
 
@@ -214,17 +214,17 @@ impl<T, Y> IntoUseLine<T, Y> for Line<T, Y> {
     fn into_use_line(
         self,
         id: usize,
-        colour: Memo<Colour>,
+        color: Memo<Color>,
         axis: YAxis,
     ) -> (UseY, Arc<dyn GetYValue<T, Y>>) {
-        let override_colour = self.colour;
-        let colour = Signal::derive(move || override_colour.get().unwrap_or(colour.get()));
+        let override_color = self.color;
+        let color = Signal::derive(move || override_color.get().unwrap_or(color.get()));
         let line = UseY::new_line(
             id,
             self.name,
             axis,
             UseLine {
-                colour,
+                color,
                 gradient: self.gradient,
                 width: self.width,
                 interpolation: self.interpolation,
@@ -251,17 +251,17 @@ pub fn RenderLine<X: Tick, Y: Tick>(
         positions.with(|positions| line.interpolation.get().path(positions, x_is_horizontal))
     };
 
-    // Line colour
+    // Line color
     let gradient_id = format!("line_{}_gradient", use_y.id);
     let stroke = {
-        let colour = line.colour;
+        let color = line.color;
         let gradient_id = gradient_id.clone();
         Signal::derive(move || {
             // Gradient takes precedence
             if line.gradient.get().is_some() {
                 format!("url(#{gradient_id})")
             } else {
-                colour.get().to_string()
+                color.get().to_string()
             }
         })
     };

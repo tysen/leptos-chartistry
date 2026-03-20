@@ -73,7 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.2] - 2024-02-11
 ### Added
-- [Interpolated line gradients](https://feral-dot-io.github.io/leptos-chartistry/examples.html#line-colour-scheme) in [#5].
+- [Interpolated line gradients](https://feral-dot-io.github.io/leptos-chartistry/examples.html#line-color-scheme) in [#5].
 - [Line point markers](https://feral-dot-io.github.io/leptos-chartistry/examples.html#point-markers) ([another example](https://feral-dot-io.github.io/leptos-chartistry/examples.html#point-markers-2)) in [#1].
 
 ## [0.1.1] - 2024-02-11
@@ -105,7 +105,7 @@ Series options:
 - Line charts.
 - Stacked line charts.
 - X and Y ranges.
-- Colour scheme.
+- Color scheme.
 
 
 [#1]: https://github.com/feral-dot-io/leptos-chartistry/pull/1

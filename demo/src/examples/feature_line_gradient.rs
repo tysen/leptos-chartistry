@@ -11,14 +11,14 @@ pub fn Example(debug: Signal<bool>, data: Signal<Vec<MyData>>) -> impl IntoView 
         .line(
             Line::new(|data: &MyData| data.y1 + Y_OFFSET)
                 .with_width(5.0)
-                // Add a linear gradient that changes the line colour based on
+                // Add a linear gradient that changes the line color based on
                 // the Y value.
                 .with_gradient(LINEAR_GRADIENT),
         )
         .line(
             Line::new(|data: &MyData| data.y2 + Y_OFFSET)
                 .with_width(5.0)
-                // Add a diverging gradient that also changes the line colour
+                // Add a diverging gradient that also changes the line color
                 // based on the Y value except it has a central value where the
                 // gradient flips. In our case we show blue below zero and red
                 // above.

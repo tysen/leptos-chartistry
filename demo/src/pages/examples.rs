@@ -24,7 +24,7 @@ pub enum Example {
     MixedInterpolation,
     Stepped,
     Tooltip,
-    Colours,
+    Colors,
     Markers,
     Markers2,
     LineGradient,
@@ -55,10 +55,10 @@ impl Example {
             Self::MixedInterpolation => "Linear and monotone",
             Self::Stepped => "Stepped",
             Self::Tooltip => "Tooltip",
-            Self::Colours => "Colour",
+            Self::Colors => "Color",
             Self::Markers => "Point markers",
             Self::Markers2 => "Point markers 2",
-            Self::LineGradient => "Line colour scheme",
+            Self::LineGradient => "Line color scheme",
             Self::Css => "CSS styles",
         }
     }
@@ -84,10 +84,10 @@ impl Example {
             Self::MixedInterpolation => "Change the interpolation of your lines.",
             Self::Stepped => "Change the interpolation of your lines to stepped.",
             Self::Tooltip => "Add a mouse tooltip to your chart.",
-            Self::Colours => "Change the colours of your chart.",
+            Self::Colors => "Change the colors of your chart.",
             Self::Markers => "Add point markers to your lines.",
             Self::Markers2 => "Another way to add point markers to your lines.",
-            Self::LineGradient => "Adds a Y-based gradient to the line colour.",
+            Self::LineGradient => "Adds a Y-based gradient to the line color.",
             Self::Css => "Apply CSS styles to your chart.",
         }
     }
@@ -109,7 +109,7 @@ impl Example {
             Self::MixedInterpolation => include_example_hl!("interpolation_mixed"),
             Self::Stepped => include_example_hl!("interpolation_stepped"),
             Self::Tooltip => include_example_hl!("feature_tooltip"),
-            Self::Colours => include_example_hl!("feature_colours"),
+            Self::Colors => include_example_hl!("feature_colors"),
             Self::Markers => include_example_hl!("feature_markers"),
             Self::Markers2 => include_example_hl!("feature_markers_2"),
             Self::LineGradient => include_example_hl!("feature_line_gradient"),
@@ -148,7 +148,7 @@ impl Example {
             }
             Self::Stepped => view! {<interpolation_stepped::Example debug=de data=da />}.into_any(),
             Self::Tooltip => view! {<feature_tooltip::Example debug=de data=da />}.into_any(),
-            Self::Colours => view! {<feature_colours::Example debug=de data=da />}.into_any(),
+            Self::Colors => view! {<feature_colors::Example debug=de data=da />}.into_any(),
             Self::Markers => view! {<feature_markers::Example debug=de data=da />}.into_any(),
             Self::Markers2 => view! {<feature_markers_2::Example debug=de data=da />}.into_any(),
             Self::LineGradient => {
@@ -177,7 +177,7 @@ impl AsPath for Example {
             Self::MixedInterpolation => "interpolation-mixed.html",
             Self::Stepped => "interpolation-stepped.html",
             Self::Tooltip => "feature-tooltip.html",
-            Self::Colours => "feature-colours.html",
+            Self::Colors => "feature-colors.html",
             Self::Markers => "feature-markers.html",
             Self::Markers2 => "feature-markers-2.html",
             Self::LineGradient => "feature-line-gradient.html",
@@ -288,7 +288,7 @@ pub fn Examples() -> impl IntoView {
                 <h2><a href="examples.html#features">"Features"</a></h2>
                 <div class="cards">
                     <Card example=Example::Tooltip />
-                    <Card example=Example::Colours />
+                    <Card example=Example::Colors />
                     <Card example=Example::LineGradient />
                     <Card example=Example::Markers />
                     <Card example=Example::Markers2 />

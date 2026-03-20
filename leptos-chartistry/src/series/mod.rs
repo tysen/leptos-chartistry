@@ -8,12 +8,12 @@ pub use bar::{Bar, BarPlacement, BAR_GAP, BAR_GAP_INNER};
 pub use line::{
     Interpolation, Line, Marker, MarkerShape, Step, DIVERGING_GRADIENT, LINEAR_GRADIENT,
 };
-pub use stack::{Stack, STACK_COLOUR_SCHEME};
+pub use stack::{Stack, STACK_COLOR_SCHEME};
 pub use use_data::{Range, RenderData, UseData};
 pub use use_y::{Snippet, UseY};
 
 use crate::{
-    colours::{Colour, ColourScheme},
+    colors::{Color, ColorScheme},
     Tick,
 };
 use leptos::prelude::*;
@@ -44,18 +44,18 @@ pub enum YAxis {
     Secondary,
 }
 
-/// Arbitrary colours for a brighter palette than BATLOW
-pub const SERIES_COLOUR_SCHEME: [Colour; 10] = [
-    Colour::from_rgb(0x12, 0xA5, 0xED), // Blue
-    Colour::from_rgb(0xF5, 0x32, 0x5B), // Red
-    Colour::from_rgb(0x71, 0xc6, 0x14), // Green
-    Colour::from_rgb(0xFF, 0x84, 0x00), // Orange
-    Colour::from_rgb(0x7b, 0x4d, 0xff), // Purple
-    Colour::from_rgb(0xdb, 0x4c, 0xb2), // Magenta
-    Colour::from_rgb(0x92, 0xb4, 0x2c), // Darker green
-    Colour::from_rgb(0xFF, 0xCA, 0x00), // Yellow
-    Colour::from_rgb(0x22, 0xd2, 0xba), // Turquoise
-    Colour::from_rgb(0xea, 0x60, 0xdf), // Pink
+/// Arbitrary colors for a brighter palette than BATLOW
+pub const SERIES_COLOR_SCHEME: [Color; 10] = [
+    Color::from_rgb(0x12, 0xA5, 0xED), // Blue
+    Color::from_rgb(0xF5, 0x32, 0x5B), // Red
+    Color::from_rgb(0x71, 0xc6, 0x14), // Green
+    Color::from_rgb(0xFF, 0x84, 0x00), // Orange
+    Color::from_rgb(0x7b, 0x4d, 0xff), // Purple
+    Color::from_rgb(0xdb, 0x4c, 0xb2), // Magenta
+    Color::from_rgb(0x92, 0xb4, 0x2c), // Darker green
+    Color::from_rgb(0xFF, 0xCA, 0x00), // Yellow
+    Color::from_rgb(0x22, 0xd2, 0xba), // Turquoise
+    Color::from_rgb(0xea, 0x60, 0xdf), // Pink
 ];
 
 type GetX<T, X> = Arc<dyn Fn(&T) -> X + Send + Sync>;
@@ -133,7 +133,7 @@ trait GetYValue<T, Y>: Send + Sync {
 ///
 /// ## Other options
 ///
-/// Finally, like most other components, you can control aspects such as the colour scheme and data ranges of X and Y.
+/// Finally, like most other components, you can control aspects such as the color scheme and data ranges of X and Y.
 #[derive(Clone)]
 #[non_exhaustive]
 pub struct Series<T: Send + Sync + 'static, X: Tick, Y: Tick> {
@@ -151,8 +151,8 @@ pub struct Series<T: Send + Sync + 'static, X: Tick, Y: Tick> {
     pub min_y_secondary: RwSignal<Option<Y>>,
     /// Optional maximum Y value for the secondary (right) axis. Extends the upper bound if set.
     pub max_y_secondary: RwSignal<Option<Y>>,
-    /// Colour scheme for the series. If there are more lines than colours, the colours will repeat.
-    pub colours: RwSignal<ColourScheme>,
+    /// Color scheme for the series. If there are more lines than colors, the colors will repeat.
+    pub colors: RwSignal<ColorScheme>,
 }
 
 trait ApplyUseSeries<T, Y> {
@@ -160,16 +160,16 @@ trait ApplyUseSeries<T, Y> {
 }
 
 trait IntoUseLine<T, Y> {
-    fn into_use_line(self, id: usize, colour: Memo<Colour>, axis: YAxis) -> (UseY, GetY<T, Y>);
+    fn into_use_line(self, id: usize, color: Memo<Color>, axis: YAxis) -> (UseY, GetY<T, Y>);
 }
 
 trait IntoUseBar<T, Y> {
-    fn into_use_bar(self, id: usize, group_id: usize, colour: Memo<Colour>) -> (UseY, GetY<T, Y>);
+    fn into_use_bar(self, id: usize, group_id: usize, color: Memo<Color>) -> (UseY, GetY<T, Y>);
 }
 
 struct SeriesAcc<T, Y> {
-    colour_id: usize,
-    colours: RwSignal<ColourScheme>,
+    color_id: usize,
+    colors: RwSignal<ColorScheme>,
     next_id: usize,
     next_group_id: usize,
     lines: Vec<(UseY, GetY<T, Y>)>,
@@ -190,14 +190,14 @@ impl<T: Send + Sync, X: Tick, Y: Tick> Series<T, X, Y> {
             max_y: RwSignal::default(),
             min_y_secondary: RwSignal::default(),
             max_y_secondary: RwSignal::default(),
-            colours: RwSignal::new(SERIES_COLOUR_SCHEME.into()),
+            colors: RwSignal::new(SERIES_COLOR_SCHEME.into()),
             series: Vec::new(),
         }
     }
 
-    /// Set the colour scheme for the series. If there are more lines than colours, the colours will repeat.
-    pub fn with_colours(self, colours: impl Into<ColourScheme>) -> Self {
-        self.colours.set(colours.into());
+    /// Set the color scheme for the series. If there are more lines than colors, the colors will repeat.
+    pub fn with_colors(self, colors: impl Into<ColorScheme>) -> Self {
+        self.colors.set(colors.into());
         self
     }
 
@@ -295,7 +295,7 @@ impl<T: Send + Sync, X: Tick, Y: Tick> Series<T, X, Y> {
     }
 
     fn to_use_lines(&self) -> Vec<(UseY, GetY<T, Y>)> {
-        let mut series = SeriesAcc::new(self.colours);
+        let mut series = SeriesAcc::new(self.colors);
         for seq in self.series.clone() {
             seq.apply_use_series(&mut series);
         }
@@ -312,45 +312,45 @@ impl<T: Send + Sync, X: Tick> Series<T, X, f64> {
 }
 
 impl<T, Y> SeriesAcc<T, Y> {
-    fn new(colours: RwSignal<ColourScheme>) -> Self {
+    fn new(colors: RwSignal<ColorScheme>) -> Self {
         Self {
-            colour_id: 0,
-            colours,
+            color_id: 0,
+            colors,
             next_id: 0,
             next_group_id: 0,
             lines: Vec::new(),
         }
     }
 
-    fn next_colour(&mut self) -> Memo<Colour> {
-        let id = self.colour_id;
-        self.colour_id += 1;
-        let colours = self.colours;
-        Memo::new(move |_| colours.get().by_index(id))
+    fn next_color(&mut self) -> Memo<Color> {
+        let id = self.color_id;
+        self.color_id += 1;
+        let colors = self.colors;
+        Memo::new(move |_| colors.get().by_index(id))
     }
 
     fn push_line(
         &mut self,
-        colour: Memo<Colour>,
+        color: Memo<Color>,
         axis: YAxis,
         line: impl IntoUseLine<T, Y>,
     ) -> GetY<T, Y> {
         // Create line
         let id = self.next_id;
         self.next_id += 1;
-        let (line, get_y) = line.into_use_line(id, colour, axis);
+        let (line, get_y) = line.into_use_line(id, color, axis);
         // Insert line
         self.lines.push((line, get_y.clone()));
         get_y
     }
 
-    fn push_bar(&mut self, colour: Memo<Colour>, bar: impl IntoUseBar<T, Y>) -> GetY<T, Y> {
+    fn push_bar(&mut self, color: Memo<Color>, bar: impl IntoUseBar<T, Y>) -> GetY<T, Y> {
         // Create bar
         let id = self.next_id;
         let group_id = self.next_group_id;
         self.next_id += 1;
         self.next_group_id += 1;
-        let (bar, get_y) = bar.into_use_bar(id, group_id, colour);
+        let (bar, get_y) = bar.into_use_bar(id, group_id, color);
         // Insert bar
         self.lines.push((bar, get_y.clone()));
         get_y

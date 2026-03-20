@@ -1,13 +1,13 @@
 use super::{ApplyUseSeries, GetYValue, IntoUseLine, SeriesAcc, UseY, YAxis};
 use crate::{
-    colours::{Colour, ColourScheme, BATLOW},
+    colors::{Color, ColorScheme, BATLOW},
     Line,
 };
 use leptos::prelude::*;
 use std::sync::Arc;
 
-/// Default colour scheme for stack. Assumes a light background with dark values for high values.
-pub const STACK_COLOUR_SCHEME: [Colour; 10] = BATLOW;
+/// Default color scheme for stack. Assumes a light background with dark values for high values.
+pub const STACK_COLOR_SCHEME: [Color; 10] = BATLOW;
 
 /// Draws a stack of lines on top of each other.
 ///
@@ -28,8 +28,8 @@ pub const STACK_COLOUR_SCHEME: [Colour; 10] = BATLOW;
 #[non_exhaustive]
 pub struct Stack<T, Y> {
     lines: Vec<Line<T, Y>>,
-    /// Colour scheme for the stack. Interpolates colours across the whole scheme.
-    pub colours: RwSignal<ColourScheme>,
+    /// Color scheme for the stack. Interpolates colors across the whole scheme.
+    pub colors: RwSignal<ColorScheme>,
 }
 
 impl<T, Y> Stack<T, Y> {
@@ -54,9 +54,9 @@ impl<T, Y> Stack<T, Y> {
         self.lines.is_empty()
     }
 
-    /// Sets the colour scheme for the stack.
-    pub fn with_colours(self, colours: impl Into<ColourScheme>) -> Self {
-        self.colours.set(colours.into());
+    /// Sets the color scheme for the stack.
+    pub fn with_colors(self, colors: impl Into<ColorScheme>) -> Self {
+        self.colors.set(colors.into());
         self
     }
 }
@@ -65,7 +65,7 @@ impl<T, Y> Default for Stack<T, Y> {
     fn default() -> Self {
         Self {
             lines: Vec::new(),
-            colours: RwSignal::new(ColourScheme::from(STACK_COLOUR_SCHEME).invert()),
+            colors: RwSignal::new(ColorScheme::from(STACK_COLOR_SCHEME).invert()),
         }
     }
 }
@@ -82,17 +82,17 @@ impl<T, Y, I: IntoIterator<Item = Line<T, Y>>> From<I> for Stack<T, Y> {
 
 impl<T: 'static> ApplyUseSeries<T, f64> for Stack<T, f64> {
     fn apply_use_series(self: Arc<Self>, series: &mut SeriesAcc<T, f64>) {
-        let colours = self.colours;
+        let colors = self.colors;
         let total_lines = self.lines.len();
         let mut previous = Vec::with_capacity(total_lines);
         for (id, line) in self.lines.clone().into_iter().enumerate() {
-            let colour = Memo::new(move |_| colours.get().interpolate(id, total_lines));
+            let color = Memo::new(move |_| colors.get().interpolate(id, total_lines));
             let line = StackedLine {
                 line,
                 previous: previous.clone(),
             };
             // Add line - stacks always use the primary axis
-            let get_y = series.push_line(colour, YAxis::Primary, line);
+            let get_y = series.push_line(color, YAxis::Primary, line);
             // Sum next line with this one
             previous.push(get_y);
         }
@@ -115,10 +115,10 @@ impl<T: 'static> IntoUseLine<T, f64> for StackedLine<T, f64> {
     fn into_use_line(
         self,
         id: usize,
-        colour: Memo<Colour>,
+        color: Memo<Color>,
         axis: YAxis,
     ) -> (UseY, Arc<dyn GetYValue<T, f64>>) {
-        let (line, get_y) = self.line.into_use_line(id, colour, axis);
+        let (line, get_y) = self.line.into_use_line(id, color, axis);
         let get_y = Arc::new(UseStackLine {
             line: get_y,
             previous: self.previous.clone(),

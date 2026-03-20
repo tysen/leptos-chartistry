@@ -8,7 +8,7 @@ These are mostly thoughts and internal notes (for now).
 
 - Data is a `Vec<T>` to simplify building of line Series. To drop the <T> we could use an IntoIterator on the Series or each line. The has the drawback of complicating the chart internals as it still needs an efficient aggregate model. It's not clear that it could be efficient (avoiding extra iterations and copies of data) without impacting API ergonomics. For example, per line: `Iterator<Item = (X, Y)>`, per series: `Iterator<Item = (X, [Y])>` and `[Y] -> Y` per line which implies a generic Item = (X, T) and T -> Y. There are usecases for a data transform step but this looks better suited as a step before the data is passed to the library.
 
-- Colours: need a general write up on difficulties. Assumes a light background.
+- Colors: need a general write up on difficulties. Assumes a light background.
 
 - Timestamps: Should be reworked to avoid overlapping labels. `iter_aligned_range` should be passed a Duration instead of using Period::increment.
 
@@ -27,7 +27,7 @@ Features to add:
 - Canvas
     - Calculate font
     - Multi-line labels
-    - Can we get background colour?
+    - Can we get background color?
 - Arrow head (or big red dot) on line chart + linecap
 - Tick:
     - f32 
@@ -35,7 +35,7 @@ Features to add:
     - Option<Tick>
 - Legend:
     - lines with gradients don't render well
-    - bar chart should render a block of colour
+    - bar chart should render a block of color
     - In interpolation_mixed.rs I'd like to show only the named lines
     - Render in pure SVG, not HTML
 
@@ -43,7 +43,7 @@ Features to add:
     - Clicking show code doesn't show the chart
     - #aspect ratio section needs a link to docs.rs for context
 
-- Colours:
+- Colors:
     - divergent gradient should be able to specify the centre point
     - missing alpha channel
 

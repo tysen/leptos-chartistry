@@ -1,5 +1,5 @@
 use super::UseLine;
-use crate::colours::Colour;
+use crate::colors::Color;
 use leptos::prelude::*;
 
 // Scales our marker (drawn -1 to 1) to a 1.0 line width
@@ -11,12 +11,12 @@ const WIDTH_TO_MARKER: f64 = 8.0;
 pub struct Marker {
     /// Shape of the marker. Default is no marker.
     pub shape: RwSignal<MarkerShape>,
-    /// Colour of the marker. Default is line colour.
-    pub colour: RwSignal<Option<Colour>>,
+    /// Color of the marker. Default is line color.
+    pub color: RwSignal<Option<Color>>,
     /// Size relative to the line width. Default is 1.0.
     pub scale: RwSignal<f64>,
-    /// Colour of the border. Set to the same as the background to separate the marker from the line. Default is the line colour.
-    pub border: RwSignal<Option<Colour>>,
+    /// Color of the border. Set to the same as the background to separate the marker from the line. Default is the line color.
+    pub border: RwSignal<Option<Color>>,
     /// Width of the border. Zero removes the border. Default is zero.
     pub border_width: RwSignal<f64>,
 }
@@ -46,7 +46,7 @@ impl Default for Marker {
     fn default() -> Self {
         Self {
             shape: RwSignal::default(),
-            colour: RwSignal::default(),
+            color: RwSignal::default(),
             scale: RwSignal::new(1.0),
             border: RwSignal::default(),
             border_width: RwSignal::new(0.0),
@@ -69,9 +69,9 @@ impl Marker {
         }
     }
 
-    /// Set the colour of the marker. Default is line colour.
-    pub fn with_colour(self, colour: impl Into<Option<Colour>>) -> Self {
-        self.colour.set(colour.into());
+    /// Set the color of the marker. Default is line color.
+    pub fn with_color(self, color: impl Into<Option<Color>>) -> Self {
+        self.color.set(color.into());
         self
     }
 
@@ -81,8 +81,8 @@ impl Marker {
         self
     }
 
-    /// Set the colour of the marker border. Set to the same as the background to separate the marker from the line. Default is white.
-    pub fn with_border(self, border: impl Into<Option<Colour>>) -> Self {
+    /// Set the color of the marker border. Set to the same as the background to separate the marker from the line. Default is white.
+    pub fn with_border(self, border: impl Into<Option<Color>>) -> Self {
         self.border.set(border.into());
         self
     }
@@ -139,8 +139,8 @@ pub(super) fn LineMarkers(line: UseLine, positions: Signal<Vec<(f64, f64)>>) -> 
 
     view! {
         <g
-            fill=move || marker.colour.get().unwrap_or_else(|| line.colour.get()).to_string()
-            stroke=move || marker.border.get().unwrap_or_else(|| line.colour.get()).to_string()
+            fill=move || marker.color.get().unwrap_or_else(|| line.color.get()).to_string()
+            stroke=move || marker.border.get().unwrap_or_else(|| line.color.get()).to_string()
             stroke-width=move || border_width.get() * 2.0 // Half of the stroke is inside
             class="_chartistry_line_markers">
             {markers}

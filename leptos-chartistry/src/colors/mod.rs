@@ -1,27 +1,27 @@
-mod colourmaps;
+mod colormaps;
 mod scheme;
 
-pub use colourmaps::*;
-pub use scheme::{ColourScheme, DivergingGradient, LinearGradientSvg, SequentialGradient};
+pub use colormaps::*;
+pub use scheme::{ColorScheme, DivergingGradient, LinearGradientSvg, SequentialGradient};
 
 use std::str::FromStr;
 
-/// A colour in RGB format.
+/// A color in RGB format.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Colour {
+pub struct Color {
     red: u8,
     green: u8,
     blue: u8,
 }
 
-impl Colour {
-    /// Create a new colour with the given red, green, and blue values.
+impl Color {
+    /// Create a new color with the given red, green, and blue values.
     #[deprecated(since = "0.1.1", note = "renamed to `from_rgb`")]
     pub const fn new(red: u8, green: u8, blue: u8) -> Self {
         Self::from_rgb(red, green, blue)
     }
 
-    /// Create a new colour with the given red, green, and blue values.
+    /// Create a new color with the given red, green, and blue values.
     pub const fn from_rgb(red: u8, green: u8, blue: u8) -> Self {
         Self { red, green, blue }
     }
@@ -34,7 +34,7 @@ impl Colour {
             let diff = post - pre;
             (pre + (diff * ratio)).round() as u8
         };
-        Colour {
+        Color {
             red: interpolate(self.red, rhs.red),
             green: interpolate(self.green, rhs.green),
             blue: interpolate(self.blue, rhs.blue),
@@ -42,13 +42,13 @@ impl Colour {
     }
 }
 
-impl std::fmt::Display for Colour {
+impl std::fmt::Display for Color {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "#{:02X}{:02X}{:02X}", self.red, self.green, self.blue)
     }
 }
 
-impl FromStr for Colour {
+impl FromStr for Color {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -60,7 +60,7 @@ impl FromStr for Colour {
         let red = u8::from_str_radix(&s[0..2], 16).map_err(|e| e.to_string())?;
         let green = u8::from_str_radix(&s[2..4], 16).map_err(|e| e.to_string())?;
         let blue = u8::from_str_radix(&s[4..6], 16).map_err(|e| e.to_string())?;
-        Ok(Colour { red, green, blue })
+        Ok(Color { red, green, blue })
     }
 }
 
@@ -69,27 +69,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_colour_interpolation() {
-        let black = Colour::from_rgb(0, 0, 0);
-        let white = Colour::from_rgb(255, 255, 255);
+    fn test_color_interpolation() {
+        let black = Color::from_rgb(0, 0, 0);
+        let white = Color::from_rgb(255, 255, 255);
         assert_eq!(black.interpolate(white, 1.0), white);
         assert_eq!(black.interpolate(white, 0.0), black);
         assert_eq!(white.interpolate(black, 1.0), black);
         assert_eq!(white.interpolate(black, 0.0), white);
-        assert_eq!(black.interpolate(white, 0.2), Colour::from_rgb(51, 51, 51));
+        assert_eq!(black.interpolate(white, 0.2), Color::from_rgb(51, 51, 51));
         assert_eq!(
             white.interpolate(black, 0.2),
-            Colour::from_rgb(204, 204, 204)
+            Color::from_rgb(204, 204, 204)
         );
-        let other = Colour::from_rgb(34, 202, 117);
-        assert_eq!(black.interpolate(other, 0.4), Colour::from_rgb(14, 81, 47));
+        let other = Color::from_rgb(34, 202, 117);
+        assert_eq!(black.interpolate(other, 0.4), Color::from_rgb(14, 81, 47));
         assert_eq!(
             white.interpolate(other, 0.2),
-            Colour::from_rgb(211, 244, 227)
+            Color::from_rgb(211, 244, 227)
         );
         assert_eq!(
             white.interpolate(other, 0.8),
-            Colour::from_rgb(78, 213, 145)
+            Color::from_rgb(78, 213, 145)
         );
     }
 }
