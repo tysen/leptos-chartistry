@@ -76,7 +76,7 @@ pub use colors::{Color, ColorScheme, DivergingGradient, SequentialGradient};
 pub use edge::Edge;
 pub use inner::{
     axis_marker::{AxisMarker, AxisPlacement, AXIS_MARKER_COLOR},
-    grid_line::{XGridLine, YGridLine, GRID_LINE_COLOR},
+    grid_line::{GridLineLabel, XGridLine, YGridLine, GRID_LINE_COLOR, GRID_LINE_LABEL_COLOR},
     guide_line::{AlignOver, XGuideLine, YGuideLine, GUIDE_LINE_COLOR},
     legend::InsetLegend,
     InnerLayout, IntoInner, IntoInner as _,

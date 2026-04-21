@@ -6,6 +6,55 @@ use leptos::prelude::*;
 
 /// Default color for grid lines.
 pub const GRID_LINE_COLOR: Color = Color::from_rgb(0xEF, 0xF2, 0xFA);
+/// Default color for grid line labels.
+pub const GRID_LINE_LABEL_COLOR: Color = Color::from_rgb(0x9A, 0x9A, 0x9A);
+/// Default padding for grid line labels in pixels.
+const GRID_LINE_LABEL_PADDING: f64 = 5.0;
+
+/// Configuration for a text label displayed along grid lines. Text is rotated
+/// 90° and reads bottom-to-top for vertical lines, or left-to-right for horizontal lines.
+#[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub struct GridLineLabel {
+    /// Text to display along the line.
+    pub text: RwSignal<String>,
+    /// Color of the label text.
+    pub color: RwSignal<Color>,
+    /// Padding in pixels from the start of the line (bottom for vertical, left for horizontal).
+    pub padding: RwSignal<f64>,
+}
+
+impl GridLineLabel {
+    /// Creates a new grid line label with the given text.
+    pub fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: RwSignal::new(text.into()),
+            ..Default::default()
+        }
+    }
+
+    /// Sets the color of the label text.
+    pub fn with_color(self, color: impl Into<Color>) -> Self {
+        self.color.set(color.into());
+        self
+    }
+
+    /// Sets the padding from the start of the line.
+    pub fn with_padding(self, padding: f64) -> Self {
+        self.padding.set(padding);
+        self
+    }
+}
+
+impl Default for GridLineLabel {
+    fn default() -> Self {
+        Self {
+            text: RwSignal::new(String::new()),
+            color: RwSignal::new(GRID_LINE_LABEL_COLOR),
+            padding: RwSignal::new(GRID_LINE_LABEL_PADDING),
+        }
+    }
+}
 
 macro_rules! impl_grid_line {
     ($name:ident) => {
@@ -19,6 +68,8 @@ macro_rules! impl_grid_line {
             pub color: RwSignal<Color>,
             /// Ticks to align the grid line to.
             pub ticks: TickLabels<XY>,
+            /// Optional text label displayed along each grid line.
+            pub label: Option<GridLineLabel>,
         }
 
         impl<XY: Tick> $name<XY> {
@@ -35,6 +86,18 @@ macro_rules! impl_grid_line {
                 self.color.set(color.into());
                 self
             }
+
+            /// Adds a text label displayed along each grid line.
+            pub fn with_label(mut self, text: impl Into<String>) -> Self {
+                self.label = Some(GridLineLabel::new(text));
+                self
+            }
+
+            /// Adds a label configuration displayed along each grid line.
+            pub fn with_labels(mut self, label: GridLineLabel) -> Self {
+                self.label = Some(label);
+                self
+            }
         }
 
         impl<XY: Tick> Default for $name<XY> {
@@ -43,6 +106,7 @@ macro_rules! impl_grid_line {
                     width: RwSignal::new(1.0),
                     color: RwSignal::new(GRID_LINE_COLOR),
                     ticks: TickLabels::default(),
+                    label: None,
                 }
             }
         }
@@ -63,6 +127,8 @@ pub struct YGridLine<XY: Tick> {
     pub ticks: TickLabels<XY>,
     /// Which Y-axis to align grid lines to. Default is [YAxis::Primary].
     pub axis: YAxis,
+    /// Optional text label displayed along each grid line.
+    pub label: Option<GridLineLabel>,
 }
 
 impl<XY: Tick> YGridLine<XY> {
@@ -93,6 +159,18 @@ impl<XY: Tick> YGridLine<XY> {
             ..Default::default()
         }
     }
+
+    /// Adds a text label displayed along each grid line.
+    pub fn with_label(mut self, text: impl Into<String>) -> Self {
+        self.label = Some(GridLineLabel::new(text));
+        self
+    }
+
+    /// Adds a label configuration displayed along each grid line.
+    pub fn with_labels(mut self, label: GridLineLabel) -> Self {
+        self.label = Some(label);
+        self
+    }
 }
 
 impl<XY: Tick> Default for YGridLine<XY> {
@@ -102,6 +180,7 @@ impl<XY: Tick> Default for YGridLine<XY> {
             color: RwSignal::new(GRID_LINE_COLOR),
             ticks: TickLabels::default(),
             axis: YAxis::Primary,
+            label: None,
         }
     }
 }
@@ -112,6 +191,7 @@ macro_rules! impl_use_grid_line {
             width: RwSignal<f64>,
             color: RwSignal<Color>,
             ticks: Memo<GeneratedTicks<XY>>,
+            label: Option<GridLineLabel>,
         }
 
         impl<XY: Tick> Clone for $name<XY> {
@@ -120,6 +200,7 @@ macro_rules! impl_use_grid_line {
                     width: self.width,
                     color: self.color,
                     ticks: self.ticks,
+                    label: self.label.clone(),
                 }
             }
         }
@@ -133,6 +214,7 @@ pub struct UseYGridLine<XY: Tick> {
     color: RwSignal<Color>,
     ticks: Memo<GeneratedTicks<XY>>,
     axis: YAxis,
+    label: Option<GridLineLabel>,
 }
 
 impl<XY: Tick> Clone for UseYGridLine<XY> {
@@ -142,6 +224,7 @@ impl<XY: Tick> Clone for UseYGridLine<XY> {
             color: self.color,
             ticks: self.ticks,
             axis: self.axis,
+            label: self.label.clone(),
         }
     }
 }
@@ -154,6 +237,7 @@ impl<X: Tick> XGridLine<X> {
             width: self.width,
             color: self.color,
             ticks: self.ticks.generate_horizontal(state.pre.data.range_x, &state.pre, avail_width),
+            label: self.label,
         }
     }
 }
@@ -171,6 +255,7 @@ impl<Y: Tick> YGridLine<Y> {
             color: self.color,
             ticks: self.ticks.generate_vertical(range, &state.pre, avail_height),
             axis: self.axis,
+            label: self.label,
         }
     }
 }
@@ -182,7 +267,7 @@ pub(super) fn XGridLine<X: Tick, Y: Tick>(
 ) -> impl IntoView {
     view! {
         <GridLine id="x" ticks=line.ticks proj=state.projection_primary is_x=true
-            width=line.width color=line.color state=state />
+            width=line.width color=line.color label=line.label state=state />
     }
 }
 
@@ -197,7 +282,7 @@ pub(super) fn YGridLine<X: Tick, Y: Tick>(
     };
     view! {
         <GridLine id="y" ticks=line.ticks proj=proj is_x=false
-            width=line.width color=line.color state=state />
+            width=line.width color=line.color label=line.label state=state />
     }
 }
 
@@ -209,10 +294,12 @@ fn GridLine<XY: Tick, X: Tick, Y: Tick>(
     is_x: bool,
     width: RwSignal<f64>,
     color: RwSignal<Color>,
+    label: Option<GridLineLabel>,
     state: State<X, Y>,
 ) -> impl IntoView {
     let debug = state.pre.debug;
     let inner = state.layout.inner;
+    let font_height = state.pre.font_height;
     let orientation = state.layout.orientation;
 
     // For X ticks: lines are perpendicular to the X axis (vertical in normal, horizontal in rotated)
@@ -224,16 +311,65 @@ fn GridLine<XY: Tick, X: Tick, Y: Tick>(
     let lines = move || {
         for_ticks(ticks, proj, is_x)
             .into_iter()
-            .map(|(pos, label)| {
+            .map(|(pos, tick_label)| {
                 let inner = inner.get();
                 let (x1, y1, x2, y2) = if pos_is_x {
                     (pos, inner.top_y(), pos, inner.bottom_y())
                 } else {
                     (inner.left_x(), pos, inner.right_x(), pos)
                 };
+                let label_view = label.as_ref().map(|lbl| {
+                    let text = lbl.text.clone();
+                    let label_color = lbl.color;
+                    let padding = lbl.padding;
+                    let font_height = font_height.clone();
+                    // For vertical lines: text at bottom, rotated 270° (reads bottom-to-top)
+                    // For horizontal lines: text at left, no rotation (reads left-to-right)
+                    // Small gap between the line and the text baseline
+                    let gap = 2.0;
+                    if pos_is_x {
+                        // Vertical line: place text near bottom, rotated 270° (reads bottom-to-top)
+                        // Offset tx to the left so text sits above the line after rotation
+                        let tx = pos - gap;
+                        let ty = move || inner.bottom_y() - padding.get();
+                        let transform = move || format!("rotate(270, {}, {})", tx, ty());
+                        view! {
+                            <text
+                                x=tx
+                                y=ty
+                                transform=transform
+                                fill=move || label_color.get().to_string()
+                                stroke="none"
+                                font-family="monospace"
+                                font-size=move || font_height.get()
+                                dominant-baseline="auto"
+                                text-anchor="start">
+                                {move || text.get()}
+                            </text>
+                        }.into_any()
+                    } else {
+                        // Horizontal line: place text near left, sitting above the line
+                        let tx = move || inner.left_x() + padding.get();
+                        let ty = pos - gap;
+                        view! {
+                            <text
+                                x=tx
+                                y=ty
+                                fill=move || label_color.get().to_string()
+                                stroke="none"
+                                font-family="monospace"
+                                font-size=move || font_height.get()
+                                dominant-baseline="auto"
+                                text-anchor="start">
+                                {move || text.get()}
+                            </text>
+                        }.into_any()
+                    }
+                });
                 view! {
-                    <DebugRect label=format!("grid_line_{}/{}", id, label) debug=debug />
+                    <DebugRect label=format!("grid_line_{}/{}", id, tick_label) debug=debug />
                     <line x1=x1 y1=y1 x2=x2 y2=y2 />
+                    {label_view}
                 }
             })
             .collect_view()

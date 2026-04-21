@@ -328,9 +328,9 @@ fn RenderChart<X: Tick, Y: Tick>(
             style="display: block; overflow: visible;">
             <DebugRect label="RenderChart" debug=debug bounds=vec![outer.into()] />
             <CommonDefs />
-            {inner}
             {edges}
             {view!{<RenderData state=state.clone() />}.into_any()}
+            {inner}
         </svg>
         <Tooltip tooltip=tooltip state=state />
     }
