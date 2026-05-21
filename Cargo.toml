@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-members = [ "demo", "examples/ssr", "leptos-chartistry" ]
+members = [ "leptos-chartistry" ]
+exclude = [ "demo", "examples/ssr" ]
 
 [profile.release]
 codegen-units = 1
@@ -17,3 +18,12 @@ panic = "abort"
 # Compile times have exploded and sometimes result in wasm linker errors with Leptos 0.7. This reduces the impact.
 [profile.dev]
 debug = false
+
+[patch.crates-io]
+leptos = { git = "https://github.com/tysen/leptos", branch = "leptos_0.9" }
+leptos_meta = { git = "https://github.com/tysen/leptos", branch = "leptos_0.9" }
+leptos_router = { git = "https://github.com/tysen/leptos", branch = "leptos_0.9" }
+leptos_axum = { git = "https://github.com/tysen/leptos", branch = "leptos_0.9" }
+reactive_stores = { git = "https://github.com/tysen/leptos", branch = "leptos_0.9" }
+reactive_graph = { git = "https://github.com/tysen/leptos", branch = "leptos_0.9" }
+leptos-use = { git = "https://github.com/tysen/leptos-use", branch = "leptos_0.9" }
